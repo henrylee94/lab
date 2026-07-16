@@ -22,15 +22,43 @@
     text-decoration:none; } .back:hover { color:var(--cyan); }
   .vignette { position:fixed; inset:0; z-index:3; pointer-events:none;
     background:radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.6) 100%); }
+  /* opening value card */
+  #intro { position:fixed; inset:0; z-index:6; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:16px; padding:24px;
+    transition:opacity .9s ease; pointer-events:none; }
+  #intro.gone { opacity:0; }
+  .i-name { font-size:clamp(2.4rem,8vw,5.5rem); letter-spacing:.14em; color:#eaf6fb;
+    text-shadow:0 0 34px rgba(77,227,255,.45); }
+  .i-tag { color:#9fb2c0; font-size:clamp(.95rem,2.1vw,1.3rem); line-height:1.6; max-width:26ch; }
+  .i-tag b { color:var(--amber); font-weight:600; }
+  .i-cue { margin-top:8px; color:var(--cyan); font-size:12.5px; letter-spacing:.16em;
+    text-transform:uppercase; animation:pulse 2.2s ease-in-out infinite;
+    text-shadow:0 0 12px rgba(77,227,255,.6); }
+  @keyframes pulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+  /* tappable command chips */
+  .chips { position:fixed; bottom:60px; left:50%; transform:translateX(-50%); z-index:5;
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:92vw;
+    opacity:0; transition:opacity .6s ease; pointer-events:none; }
+  .chips.show { opacity:1; pointer-events:auto; }
+  .chips button { font-family:inherit; font-size:12px; color:var(--cyan);
+    background:rgba(77,227,255,.06); border:1px solid rgba(77,227,255,.3); border-radius:20px;
+    padding:6px 13px; cursor:pointer; transition:background .2s, transform .2s, box-shadow .2s; }
+  .chips button:hover { background:rgba(77,227,255,.16); transform:translateY(-2px);
+    box-shadow:0 6px 18px -8px rgba(77,227,255,.6); }
 </style>
 </head>
 <body>
   <div class="tag"><b>henry.home</b> · the lab · running 24/7</div>
   <a class="back" href="../portfolio-website/index.html">the portfolio ↗</a>
-  <div class="hint" id="hint">▶ click / press any key to power on</div>
-  <div class="hud">drag to orbit · scroll to zoom<br />once booted: type <b>help</b> · <b>showcases</b> · <b>menu</b></div>
+  <div id="intro">
+    <div class="i-name">HENRY&nbsp;LEE</div>
+    <div class="i-tag">I build the systems money runs on.<br /><b>This is the one that runs in my living room.</b></div>
+    <div class="i-cue">▶ click anywhere / press any key to power on</div>
+  </div>
+  <div class="hud">drag to orbit · scroll to zoom<br />booted? <b>tap a chip</b> below, or type <b>help</b></div>
   <div id="app"></div>
   <div class="vignette"></div>
+  <div class="chips" id="chips"></div>
 
 <script type="importmap">
 { "imports": {
@@ -139,14 +167,23 @@ brand.rotation.x = -Math.PI/2; brand.position.set(0,0.902,0.55); pc.add(brand);
 // ============================================================ Tailscale mesh (devices -> home server)
 const mesh = new THREE.Group(); scene.add(mesh);
 const NODES = 6, nodePts = [], pulses = [];
+const LABELS = ['laptop','phone','tablet','telegram','whatsapp','openD'];
 const lineMat = new THREE.LineBasicMaterial({ color:CYAN, transparent:true, opacity:0.16 });
 const nodeMat = new THREE.MeshBasicMaterial({ color:CYAN });
+function nodeLabel(txt){
+  const cn=document.createElement('canvas'); cn.width=256; cn.height=64;
+  const g=cn.getContext('2d'); g.font='30px ui-monospace,monospace'; g.textAlign='center';
+  g.fillStyle='rgba(77,227,255,0.92)'; g.fillText(txt,128,42);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(cn),
+    transparent:true, depthWrite:false })); sp.scale.set(0.85,0.21,1); return sp;
+}
 for(let i=0;i<NODES;i++){
   const a = (i/NODES)*Math.PI*2, r = 3.4 + (i%2)*0.7;
   const p = new THREE.Vector3(Math.cos(a)*r, 1.1 + Math.sin(i*1.7)*1.0, Math.sin(a)*r);
   nodePts.push(p);
   const n = new THREE.Mesh(new THREE.SphereGeometry(0.05,12,12), nodeMat);
   n.position.copy(p); mesh.add(n);
+  const lab = nodeLabel(LABELS[i]); lab.position.copy(p).add(new THREE.Vector3(0,0.2,0)); mesh.add(lab);
   const geo = new THREE.BufferGeometry().setFromPoints([p, new THREE.Vector3(0,0.9,0)]);
   mesh.add(new THREE.Line(geo, lineMat));
   const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8),
@@ -423,6 +460,13 @@ function run(raw){ const line = raw.trim(); print(PROMPT + line, C.cyan);
   const fn = CMDS[cmd]; if(fn) fn(r.join(' '));
   else { print('command not found: '+cmd, C.amber); print('type: help', C.dim); } }
 
+// tappable command chips — for mobile / non-typers / the impatient
+const CHIP_CMDS = ['neofetch','memory','mnemosyne','backtest','gaps','rules','ai','showcases'];
+const chipBox = document.getElementById('chips');
+CHIP_CMDS.forEach(cmd=>{ const b=document.createElement('button'); b.textContent=cmd;
+  b.addEventListener('click', ()=>{ if(!booted){ boot(); return; } if(accepting) run(cmd); });
+  chipBox.appendChild(b); });
+
 // ---- boot ----
 const BOOT = [
   { t:'UM890 PRO — power on', c:C.dim },
@@ -432,12 +476,12 @@ const BOOT = [
   { t:'[ OK ] tailscale mesh    0 open ports', c:C.ok },
   { t:'', c:C.cyan },
   { t:"you're inside henry.home — the home lab.", c:C.amber },
-  { t:'type  help  to look around.', c:C.amber },
+  { t:'tap a chip below, or type  help  to look around.', c:C.amber },
   { t:'', c:C.cyan },
 ];
 function boot(){
   if(booted) return; booted = true;
-  document.getElementById('hint').classList.add('gone');
+  document.getElementById('intro').classList.add('gone');
   powerMat.emissiveIntensity = 2.4; mesh.visible = true;
   flash = 1;                       // screen power-on flash
   typeQ = BOOT.slice();            // typed char-by-char in the render loop
@@ -481,7 +525,6 @@ renderer.domElement.addEventListener('pointerup', e=>{
   const moved = downXY?Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1]):99;
   downXY=null; if(moved<6 && !booted) boot();
 });
-setTimeout(()=>document.getElementById('hint').classList.add('show'), 1300);
 
 // ============================================================ render loop
 let intro = 0, glow = 0;
@@ -514,7 +557,7 @@ function tick(){
     if(typing.t === ''){ history.push(typing); typing = null; } }
   if(typing){ typedN += 1.7;
     if(typedN >= typing.t.length){ history.push({ t:typing.t, c:typing.c }); typing = null; } }
-  if(booted && !accepting && !typing && typeQ.length === 0) accepting = true;
+  if(booted && !accepting && !typing && typeQ.length === 0){ accepting = true; chipBox.classList.add('show'); }
 
   // particles rise
   const pa = particles.geometry.attributes.position;
