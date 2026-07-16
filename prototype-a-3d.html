@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>V2 Prototype A — Boot Henry's home server (Three.js)</title>
+<style>
+  :root { --amber:#f0a63c; --bg:#080a0d; --fg:#e8e6e0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); color:var(--fg);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; overflow:hidden; }
+  #app { position:fixed; inset:0; }
+  .hud { position:fixed; left:24px; bottom:22px; z-index:5; font-size:12px;
+    line-height:1.7; color:#7d7f86; letter-spacing:.02em; }
+  .hud b { color:var(--fg); font-weight:600; }
+  .hint { position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:5;
+    font-size:12.5px; color:var(--amber); letter-spacing:.08em; text-transform:uppercase;
+    opacity:0; transition:opacity .6s ease; }
+  .hint.show { opacity:.9; }
+  .hint.gone { opacity:0; }
+  .tag { position:fixed; top:24px; left:24px; z-index:5; font-size:12px; color:#5c5e65; }
+  .tag b { color:var(--fg); }
+</style>
+</head>
+<body>
+  <div class="tag">V2 · Prototype <b>A</b> — real 3D (Three.js)</div>
+  <div class="hint" id="hint">▶ click the amber power dot</div>
+  <div class="hud">
+    <b>Henry Lee</b> · Backend Team Lead<br />
+    drag to orbit · scroll to zoom · click power to boot
+  </div>
+  <div id="app"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080a0d);
+scene.fog = new THREE.FogExp2(0x080a0d, 0.05);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(3.2, 2.4, 4.6);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 9;
+controls.maxPolarAngle = Math.PI * 0.52;
+controls.target.set(0, 0.35, 0);
+
+// ---- lighting: low ambient + cool key + warm amber rim (cinematic) ----
+scene.add(new THREE.AmbientLight(0x2a3140, 0.7));
+const key = new THREE.DirectionalLight(0xbcd2ff, 1.2);
+key.position.set(4, 6, 3); key.castShadow = true;
+key.shadow.mapSize.set(1024,1024); key.shadow.radius = 6;
+scene.add(key);
+const rim = new THREE.SpotLight(0xf0a63c, 26, 14, Math.PI/6, 0.6, 1.5);
+rim.position.set(-4, 3, -3); scene.add(rim);
+
+// ---- floor ----
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(14, 64),
+  new THREE.MeshStandardMaterial({ color:0x0c0f14, roughness:0.85, metalness:0.1 })
+);
+floor.rotation.x = -Math.PI/2; floor.position.y = -0.02; floor.receiveShadow = true;
+scene.add(floor);
+const grid = new THREE.GridHelper(26, 52, 0x1a2330, 0x11161e);
+grid.position.y = 0; scene.add(grid);
+
+// ---- the UM890 mini-PC ----
+const pc = new THREE.Group(); scene.add(pc);
+function rbox(w,h,d,r,mat){ // simple rounded-ish box via scaled box + bevel feel
+  const g = new THREE.BoxGeometry(w,h,d, 2,2,2);
+  return new THREE.Mesh(g, mat);
+}
+const bodyMat = new THREE.MeshStandardMaterial({ color:0x14171c, roughness:0.35, metalness:0.85 });
+const body = rbox(1.7, 0.62, 1.7, 0.08, bodyMat);
+body.position.y = 0.31; body.castShadow = true; body.receiveShadow = true;
+pc.add(body);
+
+// top plate
+const top = rbox(1.55, 0.04, 1.55, 0.04,
+  new THREE.MeshStandardMaterial({ color:0x0d0f13, roughness:0.5, metalness:0.7 }));
+top.position.y = 0.64; pc.add(top);
+
+// front "screen" — CanvasTexture terminal
+const screenCanvas = document.createElement('canvas');
+screenCanvas.width = 640; screenCanvas.height = 400;
+const sctx = screenCanvas.getContext('2d');
+const screenTex = new THREE.CanvasTexture(screenCanvas);
+screenTex.colorSpace = THREE.SRGBColorSpace;
+function paintScreen(lines, on){
+  sctx.fillStyle = on ? '#04110a' : '#080a0c';
+  sctx.fillRect(0,0,640,400);
+  if(!on){ sctx.fillStyle='#141820'; sctx.fillRect(0,0,640,400);
+    sctx.fillStyle='#2b3140'; sctx.font='16px monospace';
+    sctx.fillText('— powered off —', 230, 205); screenTex.needsUpdate=true; return; }
+  sctx.font = '18px ui-monospace, monospace';
+  lines.forEach((ln,i)=>{
+    sctx.fillStyle = ln.startsWith('[ OK ]') ? '#f0a63c'
+      : ln.startsWith('henry@') ? '#7cf0a0' : '#cfe8d8';
+    sctx.fillText(ln, 22, 40 + i*30);
+  });
+  screenTex.needsUpdate = true;
+}
+paintScreen([], false);
+const screen = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.28, 0.8),
+  new THREE.MeshBasicMaterial({ map:screenTex })
+);
+screen.position.set(0, 0.34, 0.851); pc.add(screen);
+// screen bezel
+const bezel = rbox(1.4, 0.9, 0.02, 0.02,
+  new THREE.MeshStandardMaterial({ color:0x05070a, roughness:0.6 }));
+bezel.position.set(0, 0.34, 0.845); pc.add(bezel);
+
+// power dot (interactive)
+const powerMat = new THREE.MeshStandardMaterial({
+  color:0xf0a63c, emissive:0xf0a63c, emissiveIntensity:0.4, roughness:0.4 });
+const power = new THREE.Mesh(new THREE.CircleGeometry(0.055, 32), powerMat);
+power.position.set(0.62, 0.16, 0.852); pc.add(power);
+const powerGlow = new THREE.PointLight(0xf0a63c, 0.6, 2); powerGlow.position.copy(power.position);
+pc.add(powerGlow);
+
+// label plate text on top (brand)
+const brandCanvas = document.createElement('canvas');
+brandCanvas.width=256; brandCanvas.height=64;
+const bx = brandCanvas.getContext('2d');
+bx.fillStyle='rgba(0,0,0,0)'; bx.fillRect(0,0,256,64);
+bx.fillStyle='#4a5060'; bx.font='bold 30px monospace'; bx.fillText('UM890 · henry-home', 8, 42);
+const brandTex = new THREE.CanvasTexture(brandCanvas);
+const brand = new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.28),
+  new THREE.MeshBasicMaterial({ map:brandTex, transparent:true }));
+brand.rotation.x = -Math.PI/2; brand.position.set(0,0.662,-0.3); pc.add(brand);
+
+// ---- boot sequence ----
+const BOOT = [
+  'UM890 PRO — BIOS v2.1',
+  'booting henry-home-server ...',
+  '[ OK ] mount /proposal-backbone',
+  '[ OK ] audit-pipeline  8.4M rec/day',
+  '[ OK ] platform online  300k+ DAU',
+  '[ OK ] exactly-once  3 languages',
+  '',
+  'henry@home:~$ _',
+];
+let booted = false;
+function boot(){
+  if(booted) return; booted = true;
+  document.getElementById('hint').classList.add('gone');
+  powerMat.emissiveIntensity = 1.6; powerGlow.intensity = 1.4;
+  const shown = [];
+  let i = 0;
+  const timer = setInterval(()=>{
+    shown.push(BOOT[i]); paintScreen(shown, true); i++;
+    if(i >= BOOT.length){ clearInterval(timer); }
+  }, 260);
+}
+
+// ---- raycast click on power ----
+const ray = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let downXY = null;
+renderer.domElement.addEventListener('pointerdown', e=>{ downXY=[e.clientX,e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e=>{
+  if(!downXY) return;
+  const moved = Math.hypot(e.clientX-downXY[0], e.clientY-downXY[1]);
+  downXY = null;
+  if(moved > 6) return; // was a drag, not a click
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(mouse, camera);
+  if(ray.intersectObject(power).length) boot();
+});
+// pointer feedback
+renderer.domElement.addEventListener('pointermove', e=>{
+  if(booted) return;
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(mouse,camera);
+  const hit = ray.intersectObject(power).length>0;
+  renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+  powerMat.emissiveIntensity = hit ? 1.2 : 0.4;
+});
+
+setTimeout(()=>document.getElementById('hint').classList.add('show'), 900);
+
+// ---- animate ----
+let t = 0;
+function tick(){
+  requestAnimationFrame(tick);
+  t += 0.016;
+  if(!booted){ pc.rotation.y = Math.sin(t*0.2)*0.25; pc.position.y = Math.sin(t*0.9)*0.02; }
+  if(!booted){ powerMat.emissiveIntensity = 0.4 + Math.sin(t*3)*0.25; } // idle pulse
+  controls.update();
+  renderer.render(scene, camera);
+}
+tick();
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
