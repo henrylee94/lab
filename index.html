@@ -213,19 +213,20 @@ function drawScreen(){
 
 // ---- home-lab content ----
 const NEO = [
-  '        ___________            henry@home.lab',
+  '        ___________            geewoni@henry.home',
   '       /  ._______. \\          ------------------------',
-  '      |  |  o o    | |         host   Minisforum UM890 Pro',
-  '      |  |_________| |         cpu    Ryzen 9 8945HS  8c/16t',
-  '      |   UM890 PRO  |         mem    32 GB',
-  '       \\____________/          os     Win11 · WSL2 Ubuntu',
-  '        [==========]           up     24/7 since May 2026',
-  '                               net    Tailscale · 0 open ports',
+  '      |  |  o o    | |         host    Minisforum UM890 Pro',
+  '      |  |_________| |         cpu     Ryzen 9 8945HS · 780M iGPU',
+  '      |   UM890 PRO  |         mem     32 GB',
+  '       \\____________/          os      Ubuntu 26.04 · WSL2',
+  '        [==========]           deploy  bare metal · no Docker',
+  '                               up      24/7 since 2026-05-26',
+  '                               net     Tailscale · 0 open ports',
 ];
 const SERVICES = [
   ['hermes-agent',    'running', 'Nous Research framework, bare-metal in WSL2'],
-  ['fastapi-trading', 'running', 'self-hosted trading server'],
-  ['daily-news',      'running', 'static daily-news page'],
+  ['fastapi-trading', 'running', 'self-hosted trading server (port 8777)'],
+  ['daily-news',      'running', 'static news page, cron-rebuilt 09:00 (port 8080)'],
   ['tailscale',       'up',      'mesh VPN · zero open ports · portproxy -> WSL'],
 ];
 const FS = {
@@ -233,31 +234,40 @@ const FS = {
                            'everything behind Tailscale. poke around:',
                            'ls · cat <file> · ps · ping <host> · hermes · neofetch'],
   'hermes/SOUL.md':       ['the agent\'s identity layer — who it is,',
-                           'before what it knows.'],
-  'hermes/MEMORY.md':     ['layered long-term memory. facts that survive',
-                           'across sessions. 73 skills sit on top.'],
+                           'before what it knows. ~5KB, injected every turn.',
+                           'SOUL.md overrides everything else on conflict.'],
+  'hermes/MEMORY.md':     ['environment facts + hard lessons, injected every',
+                           'turn. 8KB cap — the 7-day test: only write it if',
+                           'it\'s still true and useful in a week.'],
+  'hermes/USER.md':       ['how Henry works, injected every turn:',
+                           'no guessing · literal words · execute only what\'s',
+                           'asked · show proof, not "done".'],
+  'notes/memory-stack.md':['a six-layer memory stack. run: memory'],
+  'notes/life-of-a-fact.md':['a fact Henry tells me can travel up to 7 hops:',
+                           'conversation -> SOUL.md -> MEMORY.md -> USER.md ->',
+                           'Mnemosyne -> Obsidian -> session DB.',
+                           'each hop = longer memory, higher token cost.',
+                           'most facts stop at the layer that fits them.'],
   'notes/local-models.md':['postmortem: the local models lost.',
-                           'Qwen 2.5 7B / Llama 3.1 8B, CPU-only inference,',
-                           'couldn\'t keep up with multi-round tool calls.',
-                           '-> tiered router: routine = budget cloud,',
-                           '   deep reasoning = one heavyweight.'],
-  'services/trading.py':  ['self-hosted FastAPI trading server.'],
-  'services/news.html':   ['static daily-news page, regenerated each morning.'],
+                           'Ollama qwen2.5:7b / llama3.1:8b, CPU-only (no iGPU',
+                           'in WSL2) — ~60s/round, timed out on tool calls.',
+                           '-> tiered cloud router. run: models'],
+  'notes/known-gaps.md':  ['the honest list of what still leaks. run: gaps'],
+  'services/trading.py':  ['self-hosted FastAPI trading server, port 8777.'],
+  'services/news.html':   ['static daily-news page, cron-rebuilt 09:00.'],
   'agents/RULES.md':      ['the standing rules every agent here runs under —',
                            'same at work, same at home.  run: rules'],
-  'work/ai-sdlc.md':      ['how I actually ship features with agents.',
-                           'run: ai'],
+  'work/ai-sdlc.md':      ['how I actually ship features with agents. run: ai'],
 };
 const CMDS = {
-  help(){ print('commands:', C.amber);
-    [['neofetch','the box, at a glance'],['ls','list the filesystem'],
-     ['cat <file>','read a file'],['ps','running processes'],['top','live-ish process view'],
-     ['services','what\'s running 24/7'],['ping <host>','reach a mesh node'],
-     ['hermes','the self-hosted agent'],['rules','the rules my agents live by'],
-     ['ai','how I ship with agents'],['showcases','my other builds'],
-     ['open <name>','launch a showcase'],['uptime','how long it\'s been up'],
-     ['whoami','who runs this'],['clear','wipe the screen']]
-    .forEach(([c,d])=>print('  '+c.padEnd(13)+d, C.dim)); },
+  help(){ print('commands — grouped:', C.amber);
+    [['system ','neofetch  models  services  cron  top  ps  ping'],
+     ['agent  ','hermes  memory  mnemosyne  skills  gaps'],
+     ['files  ','ls  cat <file>'],
+     ['me     ','rules  ai  whoami  uptime'],
+     ['explore','showcases  open <name>  menu  clear']]
+    .forEach(([g,c])=>{ print('  '+g+' │ '+c, C.cyan); });
+    print('  hint: Tab completes · ↑/↓ history', C.dim); },
   rules(){ print('the rules my agents live by — same at work, same at home:', C.amber);
     ['0  no guessing. verify before speaking; if you can\'t, say so.',
      '1  my words mean exactly what they say. don\'t interpret — ask.',
@@ -290,17 +300,65 @@ const CMDS = {
     print('PING '+a+' via tailscale mesh ...', C.dim);
     ['64 bytes  time=0.8 ms','64 bytes  time=0.7 ms','64 bytes  time=0.9 ms']
     .forEach(l=>print('  '+l, C.cyan)); print('0% packet loss · mesh healthy', C.ok); },
-  neofetch(){ NEO.forEach(l=>print(l, l.includes('henry@')||l.includes('---')?C.amber:C.cyan)); },
+  neofetch(){ NEO.forEach(l=>print(l, l.includes('geewoni@')||l.includes('---')?C.amber:C.cyan)); },
   services(){ print('services // '+SERVICES.length+' running', C.amber);
     SERVICES.forEach(([n,s,d])=>{ print('  ● '+n.padEnd(16)+s.padEnd(9), C.ok);
       print('    '+d, C.dim); }); },
-  hermes(){ print('┌─ hermes — my self-hosted agent', C.amber);
-    ['Nous Research open-source framework, bare-metal in WSL2.',
-     'reachable via Telegram + WhatsApp gateways.',
-     'layered memory: SOUL.md / MEMORY.md / skills — 73 loaded.',
-     'running since May 2026.',
-     'honest lesson: the local models were the weak point.']
-    .forEach(l=>print('  '+l, C.white)); print('└─', C.amber); },
+  hermes(){ print('┌─ the agent that runs this house', C.amber);
+    ['a self-hosted Hermes agent (Nous Research framework),',
+     'bare-metal in WSL2, reachable over Telegram + WhatsApp.',
+     'it trades, scrapes news, keeps my memory, and lives by',
+     'the same rules my work agents do.',
+     '',
+     'dig in →  memory · mnemosyne · skills · models · cron · gaps']
+    .forEach(l=>print('  '+l, l.startsWith('dig in')?C.cyan:C.white)); print('└─', C.amber); },
+  memory(){ print('memory — a six-layer stack  (SOUL > MEMORY > Mnemosyne)', C.amber);
+    [['SOUL.md',   '~5KB ', 'identity + iron rules      · every turn'],
+     ['MEMORY.md', '8KB  ', 'environment + hard lessons · every turn'],
+     ['USER.md',   '2KB  ', 'how Henry works            · every turn'],
+     ['Mnemosyne', '671MB', 'vector recall              · on demand'],
+     ['SessionDB', '6MB  ', 'full transcripts (FTS5 search)'],
+     ['Obsidian',  'vault', 'long-term structured notes']]
+    .forEach(([n,s,d])=>print('  '+n.padEnd(10)+s+'  '+d, C.white));
+    print('  SOUL.md wins on conflict. see: cat notes/life-of-a-fact.md', C.dim); },
+  mnemosyne(){ print('mnemosyne — durable memory (SQLite + int8 vectors)', C.amber);
+    ['3,474 working + 294 episodic memories · 1,714 vectors · 671 MB',
+     'embeddings: BAAI/bge-small-en-v1.5 (fastembed)',
+     'grows ~70 memories / week',
+     'weekly "sleep" consolidates: promote · merge · forget']
+    .forEach(l=>print('  '+l, C.white)); },
+  skills(){ print('skills — 73, across 14 categories', C.amber);
+    ['devops 15   software-dev 12   creative 8   github 6',
+     'mlops 6     productivity 6    research 4   media 4',
+     'note-taking 3  + social · projects · gaming · mcp · dogfood']
+    .forEach(l=>print('  '+l, C.white));
+    print('  mine: hermes-trading · backtest-review-agent · memory-maintenance', C.dim); },
+  models(){ print('models — the local dream, and the honest retreat', C.amber);
+    ['tried local first: Ollama qwen2.5:7b / llama3.1:8b / hermes3:8b',
+     '  CPU-only in WSL2 (no iGPU) → ~60s/round, timed out on tools.',
+     'now: a tiered cloud router —',
+     '  a light model does the work (full tools),',
+     '  a heavier one is reserved for deep reasoning (no tools).']
+    .forEach(l=>print('  '+l, C.white));
+    print('  lesson: local models were the plan. they lost to latency.', C.ok); },
+  cron(){ print('cron — 7 jobs keep the house running', C.amber);
+    [['09:00 daily  ','market news pipeline'],
+     ['21:00 Mon–Fri','pre-market swing levels'],
+     ['23:00 daily  ','memory digest (recall + summarize)'],
+     ['Sun 08:00    ','weekly skills + memory maintenance'],
+     ['Sun 03:00    ','Mnemosyne sleep (consolidation)'],
+     ['Sun 02:00    ','feed watchdog (no-LLM health check)'],
+     ['1st 10:00    ','monthly harness audit']]
+    .forEach(([t,d])=>print('  '+t+'  '+d, C.white)); },
+  gaps(){ print('gaps — what still leaks (I keep an honest list)', C.amber);
+    ['· session insights vanish if not written to Mnemosyne',
+     '· daily logs to Obsidian are aspirational, not enforced',
+     '· the digest finds issues, but nothing auto-fixes them',
+     '· no cross-layer consistency check yet',
+     '· backups exist but aren\'t restore-tested']
+    .forEach(l=>print('  '+l, C.white));
+    print('  the point of a home lab: meet these in the small,', C.cyan);
+    print('  before they bite you in production.', C.cyan); },
   top(){ print('top — up since May 2026 · load 0.42 0.38 0.30', C.amber);
     print('  PID   %CPU  %MEM  COMMAND', C.dim);
     [['1042','2.1','6.4','hermes-agent'],['1088','0.4','1.1','fastapi-trading'],
