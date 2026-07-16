@@ -219,15 +219,40 @@ const FS = {
                            '   deep reasoning = one heavyweight.'],
   'services/trading.py':  ['self-hosted FastAPI trading server.'],
   'services/news.html':   ['static daily-news page, regenerated each morning.'],
+  'agents/RULES.md':      ['the standing rules every agent here runs under —',
+                           'same at work, same at home.  run: rules'],
+  'work/ai-sdlc.md':      ['how I actually ship features with agents.',
+                           'run: ai'],
 };
 const CMDS = {
   help(){ print('commands:', C.amber);
     [['neofetch','the box, at a glance'],['ls','list the filesystem'],
      ['cat <file>','read a file'],['ps','running processes'],
      ['services','what\'s running 24/7'],['ping <host>','reach a mesh node'],
-     ['hermes','the self-hosted agent'],['uptime','how long it\'s been up'],
+     ['hermes','the self-hosted agent'],['rules','the rules my agents live by'],
+     ['ai','how I ship with agents'],['uptime','how long it\'s been up'],
      ['whoami','who runs this'],['clear','wipe the screen']]
     .forEach(([c,d])=>print('  '+c.padEnd(13)+d, C.dim)); },
+  rules(){ print('the rules my agents live by — same at work, same at home:', C.amber);
+    ['0  no guessing. verify before speaking; if you can\'t, say so.',
+     '1  my words mean exactly what they say. don\'t interpret — ask.',
+     '2  execute only what was asked. "while I\'m here…" starts incidents.',
+     '3  show proof after every write. a file path is evidence, not "done".',
+     '4  discussion is not permission.',
+     '5  "it ran" is not "it works." verify after every execution.']
+    .forEach(l=>print('  '+l, C.white));
+    print('  ── Slow is fine. Wrong is not.', C.ok); },
+  ai(){ print('AI-native SDLC — how I ship with agents:', C.amber);
+    ['10-stage pipeline: PRD → design → contracts → SDK →',
+     '   tasks → parallel agent dev → machine-judged acceptance',
+     '24 skills · 8.7k lines      16 features shipped',
+     '30+ per-service context      4 role-based AI reviewers']
+    .forEach(l=>print('  '+l, C.white));
+    print('  ──', C.amber);
+    ['a two-day build → a two-hour first draft.',
+     'the last 20% is still ours. the real skill is discernment:',
+     'catching what it got wrong. discernment first, delegation second.']
+    .forEach(l=>print('  '+l, C.cyan)); },
   ls(){ print('~/', C.amber); Object.keys(FS).forEach(f=>print('  '+f, C.cyan));
     print('use: cat <file>', C.dim); },
   cat(a){ const f=FS[a]; if(!f){ print('no such file: '+(a||''), C.amber); print('try: ls', C.dim); return; }
