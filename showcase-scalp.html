@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>scalp-analyzer — a live scalping desk</title>
+<style>
+  :root { --bg:#07090d; --grid:#141922; --up:#26d07c; --down:#ff5c6c;
+    --cyan:#4de3ff; --amber:#f0a63c; --fg:#cfe0ea; --dim:#5f6b78; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  canvas { display:block; }
+  .tag { position:fixed; top:16px; left:20px; z-index:5; font-size:12px; color:var(--dim); }
+  .tag b { color:#dfeaf2; }
+  .back { position:fixed; top:16px; right:20px; z-index:5; font-size:12px; color:var(--dim); text-decoration:none; }
+  .back:hover { color:var(--cyan); }
+  .cmd { position:fixed; bottom:0; left:0; right:0; z-index:5; height:44px;
+    background:rgba(10,14,20,.9); border-top:1px solid #1a2230; display:flex; align-items:center;
+    padding:0 20px; font-size:14px; }
+  .cmd .p { color:var(--amber); margin-right:8px; }
+  .cmd input { flex:1; background:transparent; border:0; outline:0; color:var(--cyan);
+    font:inherit; caret-color:var(--cyan); }
+  .cmd .hint { color:var(--dim); font-size:12px; }
+</style>
+</head>
+<body>
+  <div class="tag">V2 · Showcase — <b>scalp-analyzer</b> · live US-stock scalping desk</div>
+  <a class="back" href="index.html">← all showcases</a>
+  <canvas id="c"></canvas>
+  <div class="cmd">
+    <span class="p">scalp $</span>
+    <input id="in" autocomplete="off" spellcheck="false" placeholder="type: check NVDA   ·   check TSLA   ·   check AAPL" />
+    <span class="hint">Moomoo OpenD → yfinance fallback · 1m/5m/15m · EMA·VWAP·RSI</span>
+  </div>
+
+<script>
+const cv = document.getElementById('c'), x = cv.getContext('2d');
+let W, H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; } resize(); addEventListener('resize', resize);
+
+// ---------- deterministic-ish seed per ticker so "check NVDA" is stable-flavored ----------
+function hash(s){ let h=2166136261; for(const ch of s){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0); }
+
+// ---------- market state ----------
+let symbol='NVDA', base=118.4, price=base, candles=[], forming=null, tick=0, session=0;
+function seed(sym){
+  symbol=sym.toUpperCase();
+  const h=hash(symbol); base=40+(h%900)/3.0; price=base;
+  candles=[]; let p=base;
+  for(let i=0;i<70;i++){ const o=p; p=step(p); const c=p;
+    candles.push(mkCandle(o,c)); }
+  forming=mkCandle(p, p); session=(h%360)/360;
+}
+function step(p){ const drift=Math.sin(tick*0.03)*0.04; return Math.max(1, p*(1+ (Math.random()-0.5)*0.006 + drift*0.002)); }
+function mkCandle(o,c){ const spread=Math.abs(o-c)+o*0.002*(0.5+Math.random());
+  return { o, c, h:Math.max(o,c)+spread*Math.random(), l:Math.min(o,c)-spread*Math.random() }; }
+
+// ---------- indicators ----------
+function ema(arr, n){ const k=2/(n+1); let e=arr[0], out=[e];
+  for(let i=1;i<arr.length;i++){ e=arr[i]*k+e*(1-k); out.push(e); } return out; }
+function vwap(cs){ let pv=0, v=0, out=[]; cs.forEach(c=>{ const tp=(c.h+c.l+c.c)/3, vol=1+Math.random();
+  pv+=tp*vol; v+=vol; out.push(pv/v); }); return out; }
+function rsi(closes, n=14){ let g=0,l=0; for(let i=Math.max(1,closes.length-n);i<closes.length;i++){
+  const d=closes[i]-closes[i-1]; if(d>=0)g+=d; else l-=d; } const rs=l===0?100:g/l; return 100-100/(1+rs); }
+function atr(cs, n=14){ let s=0, k=0; for(let i=cs.length-n;i<cs.length;i++){ if(i<0)continue; s+=cs[i].h-cs[i].l; k++; } return s/Math.max(1,k); }
+
+// ---------- analysis (7 setups + confluence + 0-10 safety) ----------
+function analyze(){
+  const cs=[...candles, forming], closes=cs.map(c=>c.c);
+  const e9=ema(closes,9), vw=vwap(cs), r=rsi(closes), a=atr(cs);
+  const last=closes[closes.length-1], e=e9[e9.length-1], v=vw[vw.length-1];
+  const eSlope=e9[e9.length-1]-e9[e9.length-4];
+  const recentHigh=Math.max(...cs.slice(-12).map(c=>c.h));
+  const lunch = session>0.45 && session<0.62;               // midday chop window
+  const checks=[
+    ['price above session VWAP', last>v],
+    ['EMA9 rising', eSlope>0],
+    ['RSI in 40–70 (momentum, not extended)', r>=40 && r<=70],
+    ['range expanding', a>last*0.004],
+    ['not lunch chop', !lunch],
+    ['holding above recent structure', last>recentHigh*0.985],
+  ];
+  const passed=checks.filter(c=>c[1]).length;
+  let safety=Math.round((passed/checks.length)*10);
+  if(lunch) safety=Math.max(0,safety-2);
+  if(r>72||r<28) safety=Math.max(0,safety-1);
+  let setup='no clean setup — stand aside';
+  if(last>v && eSlope>0 && r>=50 && r<=68) setup='VWAP bounce · trend continuation';
+  else if(last>=recentHigh*0.999 && eSlope>0) setup='opening-range breakout';
+  else if(last>v && eSlope>0 && r<55) setup='bull flag · pullback';
+  const stop=last-a*1.2, target=last+a*1.8, rr=((target-last)/(last-stop)).toFixed(1);
+  return { last, e, v, r, a, checks, passed, safety, setup, stop, target, rr, lunch };
+}
+
+// ---------- draw ----------
+function fmt(n){ return n.toFixed(2); }
+function draw(){
+  const cs=[...candles, forming];
+  const closes=cs.map(c=>c.c);
+  const e9=ema(closes,9), vw=vwap(cs);
+  const chartW=Math.floor(W*0.66), chartH=H-44-70, top=70, left=20;
+  const panelX=chartW+40;
+
+  // bg
+  x.fillStyle='#07090d'; x.fillRect(0,0,W,H);
+
+  // price range
+  const hi=Math.max(...cs.map(c=>c.h)), lo=Math.min(...cs.map(c=>c.l)), pad=(hi-lo)*0.08;
+  const yTop=hi+pad, yBot=lo-pad;
+  const Y=p=>top+(yTop-p)/(yTop-yBot)*chartH;
+  const cw=chartW/cs.length;
+
+  // grid + axis
+  x.strokeStyle='#141922'; x.lineWidth=1; x.font='11px ui-monospace,monospace'; x.textBaseline='middle';
+  for(let i=0;i<=5;i++){ const p=yTop-(yTop-yBot)*i/5, yy=Y(p);
+    x.beginPath(); x.moveTo(left,yy); x.lineTo(left+chartW,yy); x.stroke();
+    x.fillStyle='#5f6b78'; x.fillText(fmt(p), left+chartW+8, yy); }
+
+  // VWAP + EMA lines
+  const line=(vals,col)=>{ x.strokeStyle=col; x.lineWidth=1.6; x.beginPath();
+    vals.forEach((p,i)=>{ const xx=left+i*cw+cw/2, yy=Y(p); i?x.lineTo(xx,yy):x.moveTo(xx,yy); }); x.stroke(); };
+  line(vw,'#f0a63c'); line(e9,'#4de3ff');
+
+  // candles
+  cs.forEach((c,i)=>{ const xx=left+i*cw+cw/2, up=c.c>=c.o;
+    x.strokeStyle=up?'#26d07c':'#ff5c6c'; x.fillStyle=up?'#26d07c':'#ff5c6c'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(xx,Y(c.h)); x.lineTo(xx,Y(c.l)); x.stroke();
+    const bw=Math.max(1.5,cw*0.6); x.fillRect(xx-bw/2, Y(Math.max(c.o,c.c)), bw, Math.max(1,Math.abs(Y(c.o)-Y(c.c)))); });
+
+  // header
+  const A=analyze();
+  x.textBaseline='alphabetic';
+  x.fillStyle='#dfeaf2'; x.font='700 30px ui-monospace,monospace'; x.fillText(symbol, left, 44);
+  x.fillStyle=A.last>=candles[candles.length-2].c?'#26d07c':'#ff5c6c';
+  x.font='600 22px ui-monospace,monospace'; x.fillText('$'+fmt(A.last), left+120, 44);
+  x.fillStyle='#5f6b78'; x.font='12px ui-monospace,monospace';
+  x.fillText('EMA9', left+260, 40); x.fillStyle='#4de3ff'; x.fillRect(left+300,32,18,3);
+  x.fillStyle='#5f6b78'; x.fillText('VWAP', left+330, 40); x.fillStyle='#f0a63c'; x.fillRect(left+372,32,18,3);
+  x.fillStyle='#5f6b78'; x.fillText('RSI '+A.r.toFixed(0), left+410, 40);
+
+  // ---- analysis panel ----
+  let py=76; const pw=W-panelX-24;
+  const card=(h)=>{ x.fillStyle='#0b1017'; x.strokeStyle='#1a2230';
+    x.fillRect(panelX,py,pw,h); x.strokeRect(panelX,py,pw,h); };
+  const txt=(s,c,fx,fy,f)=>{ x.fillStyle=c; x.font=(f||'13px')+' ui-monospace,monospace'; x.fillText(s,panelX+16,py+fy); };
+
+  // setup card
+  card(78);
+  txt('SETUP', '#5f6b78', 0, 22, '11px');
+  txt(A.setup, A.setup.startsWith('no clean')?'#ff5c6c':'#26d07c', 0, 46, '15px');
+  txt(A.lunch?'⚠ midday chop window':'active session', '#5f6b78', 0, 66, '11px');
+  py+=94;
+
+  // safety score card
+  card(70);
+  txt('SAFETY SCORE', '#5f6b78', 0, 22, '11px');
+  const sc=A.safety, scol=sc>=7?'#26d07c':sc>=4?'#f0a63c':'#ff5c6c';
+  x.fillStyle=scol; x.font='700 30px ui-monospace,monospace'; x.fillText(sc+' / 10', panelX+16, py+56);
+  // bar
+  x.fillStyle='#1a2230'; x.fillRect(panelX+140, py+38, pw-160, 14);
+  x.fillStyle=scol; x.fillRect(panelX+140, py+38, (pw-160)*sc/10, 14);
+  py+=86;
+
+  // confluence checklist
+  card(24+A.checks.length*22+10);
+  txt('CONFLUENCE  '+A.passed+'/'+A.checks.length, '#5f6b78', 0, 22, '11px');
+  A.checks.forEach((c,i)=>{ x.fillStyle=c[1]?'#26d07c':'#3a4450';
+    x.font='12px ui-monospace,monospace';
+    x.fillText((c[1]?'✓ ':'· ')+c[0], panelX+16, py+44+i*22); });
+  py+=24+A.checks.length*22+10+16;
+
+  // entry / target / stop card
+  card(96);
+  txt('THE CARD', '#5f6b78', 0, 22, '11px');
+  const row=(lbl,val,col,fy)=>{ x.fillStyle='#5f6b78'; x.font='12px ui-monospace,monospace';
+    x.fillText(lbl, panelX+16, py+fy); x.fillStyle=col; x.font='600 14px ui-monospace,monospace';
+    x.fillText(val, panelX+90, py+fy); };
+  row('entry',  '$'+fmt(A.last),   '#dfeaf2', 44);
+  row('target', '$'+fmt(A.target), '#26d07c', 64);
+  row('stop',   '$'+fmt(A.stop),   '#ff5c6c', 84);
+  x.fillStyle='#5f6b78'; x.font='12px ui-monospace,monospace'; x.fillText('R:R  '+A.rr, panelX+220, py+64);
+
+  // footer note in panel area
+  x.fillStyle='#3a4450'; x.font='11px ui-monospace,monospace';
+  x.fillText('wired as a Claude Code skill — "check NVDA" returns this card', panelX+16, H-58);
+}
+
+// ---------- loop: forming candle animates; commit a new candle every ~900ms ----------
+let last=0, acc=0;
+function loop(ts){ requestAnimationFrame(loop);
+  const dt=ts-last; last=ts; acc+=dt; tick++;
+  // animate forming candle toward a walking price
+  price=step(price);
+  forming.c=price; forming.h=Math.max(forming.h,price); forming.l=Math.min(forming.l,price);
+  if(acc>900){ acc=0; candles.push(forming); if(candles.length>70) candles.shift();
+    forming=mkCandle(price, price); session=(session+0.01)%1; }
+  draw();
+}
+seed('NVDA'); requestAnimationFrame(loop);
+
+// ---------- command input ----------
+const inp=document.getElementById('in');
+inp.addEventListener('keydown', e=>{ if(e.key!=='Enter') return;
+  const m=inp.value.trim().match(/([A-Za-z]{1,5})\s*$/);
+  if(m) seed(m[1]); inp.value=''; });
+inp.focus();
+addEventListener('click', ()=>inp.focus());
+</script>
+</body>
+</html>

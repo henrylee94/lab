@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Henry Lee — The Lab · interactive showcases</title>
+<meta name="description" content="Interactive things Henry builds when nobody's paying him to — boot a 3D home lab, run a live scalping desk." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#06070c; --fg:#e8eef2; --dim:#7d8894; --cyan:#4de3ff; --amber:#f0a63c; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--bg); color:var(--fg); font-family:"Space Grotesk",system-ui,sans-serif;
+    min-height:100vh; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  #bg { position:fixed; inset:0; z-index:0; }
+  .wrap { position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:8vh 6vw 6vh; }
+  .serif { font-family:"Instrument Serif",serif; font-style:italic; }
+
+  header .eyebrow { font-family:ui-monospace,monospace; color:var(--amber); font-size:12px;
+    letter-spacing:.2em; text-transform:uppercase; }
+  header h1 { font-size:clamp(2.6rem,7vw,5rem); line-height:1; letter-spacing:-.03em; margin:16px 0 12px; }
+  header h1 .g { background:linear-gradient(100deg,var(--cyan),var(--amber)); -webkit-background-clip:text;
+    background-clip:text; color:transparent; }
+  header p { color:var(--dim); font-size:clamp(1rem,2vw,1.25rem); max-width:52ch; line-height:1.55; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:22px; margin-top:7vh; }
+  .card { position:relative; display:block; text-decoration:none; color:inherit; overflow:hidden;
+    border:1px solid #18202b; border-radius:14px; background:#0a0e15; min-height:260px;
+    transition:transform .35s cubic-bezier(.2,.7,.2,1), border-color .35s, box-shadow .35s; }
+  .card:hover { transform:translateY(-6px); border-color:#2a3a4a;
+    box-shadow:0 20px 50px -20px rgba(77,227,255,.25); }
+  .card .thumb { height:150px; position:relative; overflow:hidden; }
+  .card .thumb canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .card .body { padding:18px 20px 22px; }
+  .card .kind { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--cyan); }
+  .card h2 { font-size:1.5rem; margin:6px 0 8px; letter-spacing:-.01em; }
+  .card p { color:var(--dim); font-size:.92rem; line-height:1.5; }
+  .card .go { margin-top:14px; color:var(--amber); font-family:ui-monospace,monospace; font-size:13px; }
+  .card.soon { opacity:.5; pointer-events:none; }
+  .card.soon .kind { color:var(--dim); }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .tags span { font-family:ui-monospace,monospace; font-size:10.5px; color:var(--dim);
+    border:1px solid #1c2530; border-radius:20px; padding:3px 9px; }
+
+  footer { margin-top:9vh; padding-top:28px; border-top:1px solid #141b24; color:var(--dim);
+    font-size:13px; display:flex; flex-wrap:wrap; gap:18px; align-items:center; justify-content:space-between; }
+  footer a { color:var(--dim); text-decoration:none; } footer a:hover { color:var(--cyan); }
+  footer .links a { margin-left:16px; }
+</style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Henry Lee · the lab</div>
+      <h1>Things I build when <span class="g serif">nobody's paying me to.</span></h1>
+      <p>Backend Team Lead by day. At night these run on a mini-PC in my living room. Each one is a small, real, interactive thing — click in and poke around.</p>
+    </header>
+
+    <div class="grid">
+      <a class="card" href="showcase-homelab.html">
+        <div class="thumb"><canvas data-thumb="home"></canvas></div>
+        <div class="body">
+          <div class="kind">3D · Three.js</div>
+          <h2>Boot henry.home</h2>
+          <p>Power on a 3D UM890 mini-PC; it projects a holographic terminal. Explore the real home lab — <code>hermes</code>, <code>services</code>, the rules my agents live by.</p>
+          <div class="tags"><span>WebGL</span><span>bloom</span><span>live terminal</span><span>Tailscale mesh</span></div>
+          <div class="go">▶ boot it →</div>
+        </div>
+      </a>
+
+      <a class="card" href="showcase-scalp.html">
+        <div class="thumb"><canvas data-thumb="scalp"></canvas></div>
+        <div class="body">
+          <div class="kind">2D · live canvas</div>
+          <h2>scalp-analyzer</h2>
+          <p>A live US-stock scalping desk: candles, EMA &amp; VWAP, a confluence checklist and a 0–10 safety score. Type <code>check NVDA</code> for the entry/target/stop card.</p>
+          <div class="tags"><span>EMA·VWAP·RSI</span><span>7 setups</span><span>Claude Code skill</span></div>
+          <div class="go">▶ open the desk →</div>
+        </div>
+      </a>
+
+      <div class="card soon">
+        <div class="thumb"><canvas data-thumb="soon"></canvas></div>
+        <div class="body">
+          <div class="kind">coming soon</div>
+          <h2>stock-sentry</h2>
+          <p>A multi-agent trading assistant in Telegram — analyzer → strategy → backtester → verdict. Being desensitized before it ships here.</p>
+          <div class="go">— soon —</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="../portfolio-website/index.html">← back to the main portfolio</a>
+      <span class="links">
+        <a href="https://github.com/henrylee94" target="_blank" rel="noopener">github</a>
+        <a href="https://www.linkedin.com/in/henry-lee-985300158" target="_blank" rel="noopener">linkedin</a>
+      </span>
+    </footer>
+  </div>
+
+<script>
+// ambient background — drifting particles
+(function(){
+  const c=document.getElementById('bg'), x=c.getContext('2d'); let W,H,dots=[];
+  function rs(){ W=c.width=innerWidth; H=c.height=innerHeight;
+    dots=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,
+      r:Math.random()*1.6+.3,s:Math.random()*.3+.05})); }
+  rs(); addEventListener('resize',rs);
+  (function d(){ requestAnimationFrame(d); x.clearRect(0,0,W,H);
+    dots.forEach(p=>{ p.y-=p.s; if(p.y<0)p.y=H; x.fillStyle='rgba(77,227,255,'+(p.r*.14)+')';
+      x.beginPath(); x.arc(p.x,p.y,p.r,0,7); x.fill(); }); })();
+})();
+
+// tiny live thumbnails
+document.querySelectorAll('canvas[data-thumb]').forEach(cv=>{
+  const kind=cv.dataset.thumb, x=cv.getContext('2d');
+  function sz(){ cv.width=cv.offsetWidth; cv.height=cv.offsetHeight; }
+  const ro=new ResizeObserver(sz); ro.observe(cv); sz();
+  let t=0;
+  (function d(){ requestAnimationFrame(d); t++; const W=cv.width,H=cv.height;
+    x.fillStyle='#080c13'; x.fillRect(0,0,W,H);
+    if(kind==='home'){ // pulsing node mesh into a center box
+      const cx=W/2,cy=H/2; for(let i=0;i<7;i++){ const a=i/7*6.28+t*0.004, r=Math.min(W,H)*0.4;
+        const nx=cx+Math.cos(a)*r, ny=cy+Math.sin(a)*r*0.7;
+        x.strokeStyle='rgba(77,227,255,0.18)'; x.beginPath(); x.moveTo(nx,ny); x.lineTo(cx,cy); x.stroke();
+        const pt=(t*0.01+i/7)%1; x.fillStyle='#dff'; x.beginPath();
+        x.arc(nx+(cx-nx)*pt, ny+(cy-ny)*pt, 1.6, 0, 7); x.fill();
+        x.fillStyle='#4de3ff'; x.beginPath(); x.arc(nx,ny,2,0,7); x.fill(); }
+      x.fillStyle='#4de3ff'; x.fillRect(cx-14,cy-9,28,18); x.fillStyle='#081018'; x.fillRect(cx-10,cy-5,20,10);
+    } else if(kind==='scalp'){ // mini candlesticks
+      const n=18, cw=W/n; let p=H*0.55;
+      for(let i=0;i<n;i++){ p+=Math.sin(i*0.7+t*0.02)*4+(Math.random()-0.5)*3;
+        const o=p, cl=p+Math.sin(i+t*0.03)*6, up=cl<=o;
+        x.strokeStyle=up?'#26d07c':'#ff5c6c'; x.fillStyle=up?'#26d07c':'#ff5c6c';
+        const xx=i*cw+cw/2; x.fillRect(xx-cw*0.25, Math.min(o,cl), cw*0.5, Math.abs(o-cl)+2); }
+      x.strokeStyle='rgba(240,166,60,0.6)'; x.beginPath();
+      for(let i=0;i<n;i++){ const xx=i*cw, yy=H*0.5+Math.sin(i*0.5+t*0.02)*8; i?x.lineTo(xx,yy):x.moveTo(xx,yy);} x.stroke();
+    } else { x.fillStyle='#141b24'; x.font='12px monospace'; x.textAlign='center';
+      x.fillText('◍ desensitizing…', W/2, H/2); x.textAlign='left'; }
+  })();
+});
+</script>
+</body>
+</html>
