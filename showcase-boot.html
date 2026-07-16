@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Boot Henry's systems — an interactive terminal</title>
+<style>
+  :root { --amber:#f0a63c; --bg:#06070a; --fg:#cfe8d8; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; color:#cfe8d8; }
+  #app { position:fixed; inset:0; }
+  .tag { position:fixed; top:20px; left:22px; z-index:5; font-size:12px; color:#5c5e65; }
+  .tag b { color:#e8e6e0; }
+  .hint { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:5;
+    font-size:12.5px; color:var(--amber); letter-spacing:.12em; text-transform:uppercase;
+    opacity:0; transition:opacity .8s ease; }
+  .hint.show { opacity:.9; }
+  .hint.gone { opacity:0; pointer-events:none; }
+  .hud { position:fixed; right:22px; bottom:20px; z-index:5; font-size:11.5px; color:#5c5e65;
+    text-align:right; line-height:1.7; }
+</style>
+</head>
+<body>
+  <div class="tag">V2 · Showcase #1 — <b>Boot Henry's systems</b> (Three.js)</div>
+  <div class="hint" id="hint">▶ click / press any key to power on</div>
+  <div class="hud">drag to orbit · scroll to zoom<br />once booted, type in the terminal</div>
+  <div id="app"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================ scene
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06070a);
+scene.fog = new THREE.FogExp2(0x06070a, 0.055);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.1, 100);
+const CAM_TO = new THREE.Vector3(1.7, 1.7, 3.4);
+camera.position.set(6, 4.5, 8); // intro starts wide
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.enabled = false; // locked during intro
+controls.minDistance = 2.6; controls.maxDistance = 10;
+controls.maxPolarAngle = Math.PI * 0.54;
+controls.target.set(0, 1.2, 0);
+
+// lighting: low ambient, cool key, warm rim, green screen-glow
+scene.add(new THREE.AmbientLight(0x25303f, 0.7));
+const key = new THREE.DirectionalLight(0xbcd2ff, 1.15);
+key.position.set(5, 7, 4); key.castShadow = true;
+key.shadow.mapSize.set(2048,2048); key.shadow.radius = 7; scene.add(key);
+const rim = new THREE.SpotLight(0xf0a63c, 40, 18, Math.PI/6, 0.7, 1.5);
+rim.position.set(-5, 4, -4); scene.add(rim);
+const screenGlow = new THREE.PointLight(0x39ff8a, 0.0, 6); // grows on boot
+screenGlow.position.set(0, 1.2, 1.4); scene.add(screenGlow);
+
+// floor + grid
+const floor = new THREE.Mesh(new THREE.CircleGeometry(18, 64),
+  new THREE.MeshStandardMaterial({ color:0x0a0d12, roughness:0.82, metalness:0.15 }));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(30, 60, 0x18222f, 0x0f151d); scene.add(grid);
+
+// ============================================================ CRT terminal model
+const crt = new THREE.Group(); scene.add(crt);
+const shell = new THREE.MeshStandardMaterial({ color:0x1a1d22, roughness:0.55, metalness:0.35 });
+const shellDark = new THREE.MeshStandardMaterial({ color:0x0c0e12, roughness:0.6, metalness:0.4 });
+function box(w,h,d,mat,x,y,z){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; crt.add(m); return m; }
+
+box(1.5, 0.14, 1.1, shell, 0, 0.07, 0);          // base plinth
+box(0.5, 0.34, 0.5, shellDark, 0, 0.28, -0.05);  // neck
+const body = box(2.35, 1.8, 1.55, shell, 0, 1.2, -0.1); // monitor body
+box(2.0, 1.5, 0.08, shellDark, 0, 1.24, 0.66);   // bezel frame
+box(2.0, 0.1, 0.62, shell, 0, 0.06, 0.95);       // keyboard slab (in front)
+
+// screen (CanvasTexture)
+const scrCanvas = document.createElement('canvas');
+scrCanvas.width = 768; scrCanvas.height = 576;
+const ctx = scrCanvas.getContext('2d');
+const scrTex = new THREE.CanvasTexture(scrCanvas);
+scrTex.colorSpace = THREE.SRGBColorSpace;
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.74, 1.28),
+  new THREE.MeshBasicMaterial({ map:scrTex }));
+screen.position.set(0, 1.24, 0.705); crt.add(screen);
+
+// power LED
+const ledMat = new THREE.MeshStandardMaterial({ color:0xf0a63c, emissive:0xf0a63c, emissiveIntensity:0.4 });
+const led = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24), ledMat);
+led.position.set(0.82, 0.36, 0.664); crt.add(led);
+
+// ============================================================ terminal engine
+const PROMPT = 'henry@home:~$ ';
+const GREEN = '#4dffa0', DIM = '#2f9c66', AMBER = '#f0a63c', WHITE = '#cfe8d8';
+let history = [];            // {t, c}
+let input = '';
+let booted = false, accepting = false;
+const LH = 26, PAD_X = 30, PAD_TOP = 40, MAX_ROWS = 18;
+
+function print(t='', c=GREEN){ (t.split('\n')).forEach(line=>history.push({t:line,c})); }
+
+function drawScreen(on){
+  // background
+  ctx.fillStyle = on ? '#02140b' : '#04120a';
+  ctx.fillRect(0,0,768,576);
+  if(!on){
+    ctx.fillStyle = '#0a1a12'; ctx.fillRect(0,0,768,576);
+    ctx.fillStyle = '#123322'; ctx.font = '20px ui-monospace, monospace';
+    ctx.fillText('— standby —', 300, 290);
+    drawCRTfx(); scrTex.needsUpdate = true; return;
+  }
+  ctx.font = '20px ui-monospace, monospace';
+  ctx.textBaseline = 'top';
+  const rows = [...history];
+  if(accepting) rows.push({ t: PROMPT + input + (cursorOn ? '█' : ' '), c: GREEN });
+  const vis = rows.slice(-MAX_ROWS);
+  vis.forEach((r,i)=>{ ctx.fillStyle = r.c; ctx.fillText(r.t, PAD_X, PAD_TOP + i*LH); });
+  drawCRTfx();
+  scrTex.needsUpdate = true;
+}
+function drawCRTfx(){
+  // scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  for(let y=0; y<576; y+=3) ctx.fillRect(0,y,768,1);
+  // vignette
+  const g = ctx.createRadialGradient(384,288,180, 384,288,460);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,768,576);
+}
+
+// blinking cursor
+let cursorOn = true;
+setInterval(()=>{ cursorOn = !cursorOn; }, 480);
+
+// ============================================================ commands
+const SYSTEMS = {
+  proposal: ['Workflow backbone — the pipeline the money runs on.',
+    '  8.4M audited records / day. Legacy monolith -> microservices.',
+    '  From requirement to production, zero silent failures.'],
+  scale: ['Scaling a platform, live.',
+    '  50k -> 300k+ daily users without taking the lights down.',
+    '  Redis battle-tested at the right layer.'],
+  support: ['Real-time support platform — zero to clean handoff.',
+    '  Built live-chat from nothing, ~70% AI-handled,',
+    '  then handed it off clean to the team.'],
+  pipeline: ['Cross-stack mission pipeline.',
+    '  Three languages, exactly-once. No dupes, no drops.'],
+};
+const COMMANDS = {
+  help(){ print('available commands:', AMBER);
+    print('  ls            list the systems I run', DIM);
+    print('  open <name>   inspect a system (e.g. open proposal)', DIM);
+    print('  whoami        who is Henry', DIM);
+    print('  contact       how to reach me', DIM);
+    print('  clear         wipe the screen', DIM); },
+  ls(){ print('systems/', AMBER);
+    Object.keys(SYSTEMS).forEach(k=> print('  '+k, GREEN));
+    print('use: open <name>', DIM); },
+  open(arg){ const s = SYSTEMS[arg];
+    if(!s){ print('no such system: '+(arg||''), AMBER); print('try: ls', DIM); return; }
+    print('┌─ '+arg, AMBER); s.forEach(l=>print(l, WHITE)); print('└─', AMBER); },
+  whoami(){ print('Henry Lee — Backend Team Lead, Malaysia.', WHITE);
+    print('7 years shipping real-money systems.', DIM);
+    print('"Money doesn\'t forgive mistakes. I build systems that don\'t make them."', GREEN); },
+  contact(){ print('github   github.com/henrylee94', WHITE);
+    print('linkedin linkedin.com/in/henry-lee-985300158', WHITE); },
+  clear(){ history = []; },
+};
+function run(raw){
+  const line = raw.trim();
+  print(PROMPT + line, GREEN);
+  if(!line) return;
+  const [cmd, ...rest] = line.split(/\s+/);
+  const fn = COMMANDS[cmd];
+  if(fn) fn(rest.join(' '));
+  else { print('command not found: '+cmd, AMBER); print('type: help', DIM); }
+}
+
+// ============================================================ boot
+const BOOT = [
+  { t:'CRT-9000 — POST ... ok', c:DIM },
+  { t:'loading kernel: henry-home', c:DIM },
+  { t:'[ OK ] mount /proposal-backbone   8.4M rec/day', c:GREEN },
+  { t:'[ OK ] platform online            300k+ DAU', c:GREEN },
+  { t:'[ OK ] exactly-once pipeline       3 langs', c:GREEN },
+  { t:'[ OK ] support handoff             clean', c:GREEN },
+  { t:'', c:GREEN },
+  { t:"welcome. you're inside Henry's systems.", c:AMBER },
+  { t:"type  help  to look around.", c:AMBER },
+  { t:'', c:GREEN },
+];
+function boot(){
+  if(booted) return; booted = true;
+  document.getElementById('hint').classList.add('gone');
+  ledMat.emissiveIntensity = 1.6;
+  let i = 0;
+  const timer = setInterval(()=>{
+    history.push(BOOT[i]); i++;
+    // grow the green glow as it boots
+    screenGlow.intensity = Math.min(1.4, screenGlow.intensity + 0.16);
+    if(i >= BOOT.length){ clearInterval(timer); accepting = true; }
+  }, 240);
+}
+
+// ============================================================ input
+addEventListener('keydown', e=>{
+  if(!booted){ boot(); return; }
+  if(!accepting) return;
+  if(e.key === 'Enter'){ run(input); input=''; e.preventDefault(); }
+  else if(e.key === 'Backspace'){ input = input.slice(0,-1); e.preventDefault(); }
+  else if(e.key.length === 1 && !e.metaKey && !e.ctrlKey){ input += e.key; e.preventDefault(); }
+});
+let downXY=null;
+renderer.domElement.addEventListener('pointerdown', e=>{ downXY=[e.clientX,e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e=>{
+  const moved = downXY ? Math.hypot(e.clientX-downXY[0], e.clientY-downXY[1]) : 99;
+  downXY=null; if(moved<6 && !booted) boot();
+});
+setTimeout(()=>document.getElementById('hint').classList.add('show'), 1200);
+
+// ============================================================ intro + render loop
+let intro = 0;
+function tick(){
+  requestAnimationFrame(tick);
+  if(intro < 1){                       // cinematic dolly-in
+    intro = Math.min(1, intro + 0.008);
+    const e = 1 - Math.pow(1-intro, 3); // easeOutCubic
+    camera.position.lerpVectors(new THREE.Vector3(6,4.5,8), CAM_TO, e);
+    camera.lookAt(0,1.2,0);
+    if(intro >= 1) controls.enabled = true;
+  } else {
+    controls.update();
+  }
+  led.material.emissiveIntensity = booted ? 1.6 : 0.4 + Math.sin(performance.now()*0.004)*0.25;
+  drawScreen(booted);
+  renderer.render(scene, camera);
+}
+tick();
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
