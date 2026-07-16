@@ -20,21 +20,23 @@
     text-align:right; line-height:1.7; }
   .back { position:fixed; top:20px; right:22px; z-index:5; font-size:12px; color:#5c6675;
     text-decoration:none; } .back:hover { color:var(--cyan); }
+  .snd { position:fixed; top:18px; right:118px; z-index:5; background:none; border:0;
+    color:#5c6675; font-size:15px; cursor:pointer; padding:2px 4px; } .snd:hover { color:var(--cyan); }
+  .snd.off { color:#3a4450; text-decoration:line-through; }
   .vignette { position:fixed; inset:0; z-index:3; pointer-events:none;
     background:radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.6) 100%); }
-  /* opening value card */
-  #intro { position:fixed; inset:0; z-index:6; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; text-align:center; gap:16px; padding:24px;
-    transition:opacity .9s ease; pointer-events:none; }
+  /* opening title — lower-left, film-style, doesn't cover the machine */
+  #intro { position:fixed; left:6vw; bottom:13vh; z-index:6; text-align:left;
+    max-width:min(88vw,560px); transition:opacity .9s ease; pointer-events:none; }
   #intro.gone { opacity:0; }
-  .i-name { font-size:clamp(2.4rem,8vw,5.5rem); letter-spacing:.14em; color:#eaf6fb;
-    text-shadow:0 0 34px rgba(77,227,255,.45); }
-  .i-tag { color:#9fb2c0; font-size:clamp(.95rem,2.1vw,1.3rem); line-height:1.6; max-width:26ch; }
+  .i-name { font-size:clamp(1.5rem,3.4vw,2.4rem); letter-spacing:.32em; color:#eaf6fb;
+    text-shadow:0 0 30px rgba(77,227,255,.4); }
+  .i-tag { margin-top:12px; color:#9fb2c0; font-size:clamp(.95rem,1.8vw,1.2rem); line-height:1.55; }
   .i-tag b { color:var(--amber); font-weight:600; }
-  .i-cue { margin-top:8px; color:var(--cyan); font-size:12.5px; letter-spacing:.16em;
+  .i-cue { margin-top:20px; color:var(--cyan); font-size:12px; letter-spacing:.18em;
     text-transform:uppercase; animation:pulse 2.2s ease-in-out infinite;
     text-shadow:0 0 12px rgba(77,227,255,.6); }
-  @keyframes pulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+  @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
   /* tappable command chips */
   .chips { position:fixed; bottom:60px; left:50%; transform:translateX(-50%); z-index:5;
     display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:92vw;
@@ -50,10 +52,11 @@
 <body>
   <div class="tag"><b>henry.home</b> · the lab · running 24/7</div>
   <a class="back" href="../portfolio-website/index.html">the portfolio ↗</a>
+  <button class="snd" id="snd" aria-label="toggle boot sound" title="toggle boot sound">♪</button>
   <div id="intro">
     <div class="i-name">HENRY&nbsp;LEE</div>
-    <div class="i-tag">I build the systems money runs on.<br /><b>This is the one that runs in my living room.</b></div>
-    <div class="i-cue">▶ click anywhere / press any key to power on</div>
+    <div class="i-tag">Backend Team Lead by day.<br /><b>This is what I build at night.</b></div>
+    <div class="i-cue">▶ press any key to power on</div>
   </div>
   <div class="hud">drag to orbit · scroll to zoom<br />booted? <b>tap a chip</b> below, or type <b>help</b></div>
   <div id="app"></div>
@@ -223,6 +226,7 @@ const C = { cyan:'#7ff0ff', dim:'#3f7f8f', amber:'#f0a63c', white:'#dff3fb', ok:
 let history = [], input = '', booted = false, accepting = false, cursorOn = true;
 let cmdHist = [], histIdx = 0;
 let typeQ = [], typing = null, typedN = 0, flash = 0;   // boot typewriter + screen flash
+let muted = false;                                      // boot chime toggle
 const LH = 24, PAD_X = 34, PAD_TOP = 40, MAX_ROWS = 19;
 function print(t='', c=C.cyan){ t.split('\n').forEach(l=>history.push({t:l,c})); }
 setInterval(()=>cursorOn=!cursorOn, 480);
@@ -441,6 +445,10 @@ const CMDS = {
     cmdHist.forEach((c,i)=>print('  '+String(i+1).padStart(3)+'  '+c, C.dim)); },
   sudo(){ print('nice try. this box runs on trust, not root.', C.amber);
     print('(the banking credentials stay red. forever.)', C.dim); },
+  coffee(){ print('☕ brewing… the agent runs on trust and caffeine.', C.amber); },
+  sl(){ print('🚂  choo choo — you meant `ls`, but I respect the typo.', C.dim); },
+  sound(){ muted=!muted; const b=document.getElementById('snd'); if(b) b.classList.toggle('off',muted);
+    print('boot sound '+(muted?'muted':'on')+'.', C.dim); },
   showcases(){ print('other things in the lab:', C.amber);
     print('  scalp        a live scalping desk        → open scalp', C.cyan);
     print('  stock-sentry a telegram trading agent    (soon · desensitizing)', C.dim);
@@ -466,14 +474,19 @@ const chipBox = document.getElementById('chips');
 CHIP_CMDS.forEach(cmd=>{ const b=document.createElement('button'); b.textContent=cmd;
   b.addEventListener('click', ()=>{ if(!booted){ boot(); return; } if(accepting) run(cmd); });
   chipBox.appendChild(b); });
+const sndBtn = document.getElementById('snd');
+sndBtn.addEventListener('click', ()=>{ muted=!muted; sndBtn.classList.toggle('off', muted); });
 
 // ---- boot ----
 const BOOT = [
   { t:'UM890 PRO — power on', c:C.dim },
-  { t:'WSL2 Ubuntu ... ok', c:C.dim },
-  { t:'[ OK ] hermes-agent      up', c:C.ok },
-  { t:'[ OK ] fastapi-trading   up', c:C.ok },
-  { t:'[ OK ] tailscale mesh    0 open ports', c:C.ok },
+  { t:'POST … ok   ·   Ryzen 9 8945HS   ·   32 GB', c:C.dim },
+  { t:'WSL2 Ubuntu 26.04 … ok', c:C.dim },
+  { t:'[ OK ] hermes-agent       up', c:C.ok },
+  { t:'[ OK ] memory stack       SOUL · MEMORY · Mnemosyne', c:C.ok },
+  { t:'[ OK ] mnemosyne          3,474 memories loaded', c:C.ok },
+  { t:'[ OK ] fastapi-trading    up  (:8777)', c:C.ok },
+  { t:'[ OK ] tailscale mesh     0 open ports', c:C.ok },
   { t:'', c:C.cyan },
   { t:"you're inside henry.home — the home lab.", c:C.amber },
   { t:'tap a chip below, or type  help  to look around.', c:C.amber },
@@ -490,6 +503,7 @@ function boot(){
 // soft two-tone power-on chime (synth, no assets). user gesture unlocks audio.
 let actx;
 function bootSound(){
+  if(muted) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     const now = actx.currentTime;

@@ -22,12 +22,22 @@
   .cmd input { flex:1; background:transparent; border:0; outline:0; color:var(--cyan);
     font:inherit; caret-color:var(--cyan); }
   .cmd .hint { color:var(--dim); font-size:12px; }
+  .chips { position:fixed; left:20px; bottom:56px; z-index:6; display:flex; gap:8px; flex-wrap:wrap; }
+  .chips button { font-family:inherit; font-size:12px; color:var(--cyan);
+    background:rgba(77,227,255,.06); border:1px solid rgba(77,227,255,.3); border-radius:20px;
+    padding:5px 12px; cursor:pointer; transition:background .2s, transform .2s; }
+  .chips button:hover { background:rgba(77,227,255,.16); transform:translateY(-2px); }
+  .s-intro { position:fixed; left:20px; bottom:94px; z-index:6; max-width:360px; color:var(--dim);
+    font-size:12.5px; line-height:1.5; transition:opacity .9s ease; }
+  .s-intro.gone { opacity:0; }
 </style>
 </head>
 <body>
   <div class="tag">V2 · Showcase — <b>scalp-analyzer</b> · live US-stock scalping desk</div>
   <a class="back" href="lab.html">← the lab</a>
   <canvas id="c"></canvas>
+  <div class="s-intro" id="sIntro">I built the backtest engine before trusting a cent — this is the live read on top of it.</div>
+  <div class="chips" id="chips"></div>
   <div class="cmd">
     <span class="p">scalp $</span>
     <input id="in" autocomplete="off" spellcheck="false" placeholder="type: check NVDA   ·   check TSLA   ·   check AAPL" />
@@ -127,8 +137,15 @@ function draw(){
     x.beginPath(); x.moveTo(xx,Y(c.h)); x.lineTo(xx,Y(c.l)); x.stroke();
     const bw=Math.max(1.5,cw*0.6); x.fillRect(xx-bw/2, Y(Math.max(c.o,c.c)), bw, Math.max(1,Math.abs(Y(c.o)-Y(c.c)))); });
 
-  // header
+  // entry / target / stop levels drawn across the chart (the card, made visual)
   const A=analyze();
+  [['entry',A.last,'#dfeaf2'],['target',A.target,'#26d07c'],['stop',A.stop,'#ff5c6c']].forEach(([lbl,val,col])=>{
+    const yy=Y(val); x.save(); x.strokeStyle=col; x.globalAlpha=0.5; x.setLineDash([5,5]); x.lineWidth=1;
+    x.beginPath(); x.moveTo(left,yy); x.lineTo(left+chartW,yy); x.stroke(); x.restore();
+    x.fillStyle=col; x.font='10px ui-monospace,monospace'; x.textBaseline='middle';
+    x.fillText(lbl+' '+fmt(val), left+8, yy-7); });
+
+  // header
   x.textBaseline='alphabetic';
   x.fillStyle='#dfeaf2'; x.font='700 30px ui-monospace,monospace'; x.fillText(symbol, left, 44);
   x.fillStyle=A.last>=candles[candles.length-2].c?'#26d07c':'#ff5c6c';
@@ -137,6 +154,9 @@ function draw(){
   x.fillText('EMA9', left+260, 40); x.fillStyle='#4de3ff'; x.fillRect(left+300,32,18,3);
   x.fillStyle='#5f6b78'; x.fillText('VWAP', left+330, 40); x.fillStyle='#f0a63c'; x.fillRect(left+372,32,18,3);
   x.fillStyle='#5f6b78'; x.fillText('RSI '+A.r.toFixed(0), left+410, 40);
+  // backtested edge badge — the value signal, right under the header
+  x.fillStyle='#26d07c'; x.font='11px ui-monospace,monospace';
+  x.fillText('◆ backtested edge · Base-B · 76.5% WR · PF 3.92 · skip Jan', left, 61);
 
   // ---- analysis panel ----
   let py=76; const pw=W-panelX-24;
@@ -199,12 +219,21 @@ function loop(ts){ requestAnimationFrame(loop);
 seed('NVDA'); requestAnimationFrame(loop);
 
 // ---------- command input ----------
+const sIntro=document.getElementById('sIntro');
+function fadeIntro(){ if(sIntro) sIntro.classList.add('gone'); }
 const inp=document.getElementById('in');
 inp.addEventListener('keydown', e=>{ if(e.key!=='Enter') return;
   const m=inp.value.trim().match(/([A-Za-z]{1,5})\s*$/);
-  if(m) seed(m[1]); inp.value=''; });
+  if(m){ seed(m[1]); fadeIntro(); } inp.value=''; });
 inp.focus();
 addEventListener('click', ()=>inp.focus());
+
+// ---------- tappable ticker chips (mobile / non-typers) ----------
+const chipBox=document.getElementById('chips');
+['NVDA','TSLA','AAPL','AMD','META'].forEach(t=>{ const b=document.createElement('button');
+  b.textContent=t; b.addEventListener('click', ()=>{ seed(t); fadeIntro(); inp.focus(); });
+  chipBox.appendChild(b); });
+setTimeout(fadeIntro, 7000);   // caption fades on its own if untouched
 </script>
 </body>
 </html>
