@@ -258,13 +258,16 @@ const FS = {
   'agents/RULES.md':      ['the standing rules every agent here runs under —',
                            'same at work, same at home.  run: rules'],
   'work/ai-sdlc.md':      ['how I actually ship features with agents. run: ai'],
+  'trading/backtest.md':  ['intraday backtest engine — before trusting a cent.',
+                           'run: backtest   (live version: open scalp)'],
 };
 const CMDS = {
   help(){ print('commands — grouped:', C.amber);
-    [['system ','neofetch  models  services  cron  top  ps  ping'],
+    [['system ','neofetch  integrations  models  services  cron  top  ps  ping'],
      ['agent  ','hermes  memory  mnemosyne  skills  gaps'],
+     ['trading','backtest   (live: open scalp)'],
      ['files  ','ls  cat <file>'],
-     ['me     ','rules  ai  whoami  uptime'],
+     ['me     ','rules  ai  whoami  uptime  timeline  contact'],
      ['explore','showcases  open <name>  menu  clear']]
     .forEach(([g,c])=>{ print('  '+g+' │ '+c, C.cyan); });
     print('  hint: Tab completes · ↑/↓ history', C.dim); },
@@ -359,6 +362,35 @@ const CMDS = {
     .forEach(l=>print('  '+l, C.white));
     print('  the point of a home lab: meet these in the small,', C.cyan);
     print('  before they bite you in production.', C.cyan); },
+  integrations(){ print('integrations — what the agent is wired into', C.amber);
+    [['Telegram · WhatsApp','chat gateways'],
+     ['Firecrawl','web scraping / research'],
+     ['Finnhub','live stock quotes (primary)'],
+     ['Moomoo OpenD','historical K-line data'],
+     ['IBKR','order execution'],
+     ['headless Chromium','browsing'],
+     ['Obsidian vault','long-term notes (read-only)'],
+     ['Tailscale','the whole thing, zero open ports']]
+    .forEach(([n,d])=>print('  '+n.padEnd(20)+d, C.white)); },
+  backtest(){ print('backtest — I built an engine before trusting a cent', C.amber);
+    ['moomoo historical K-line + Python/pandas.',
+     'swept NVDA strategies across Jan–May 2026.',
+     'best:  Base-B + ATR×1.5 dynamic stop + $4 target',
+     '       + price > prev close + skip January',
+     '   →   76.5% win rate · profit factor 3.92',
+     'a Backtest Review Agent then argues against each result.']
+    .forEach(l=>print('  '+l, l.includes('→')?C.ok:C.white));
+    print('  the live version →  open scalp', C.cyan); },
+  timeline(){ print('timeline — ~7 weeks, one mini-PC', C.amber);
+    [['May 2026','boot: Ollama local (lost) → cloud; SOUL + memory stack'],
+     ['Jun 2026','backtest engine, trading server, WhatsApp bridge'],
+     ['Jul 2026','portfolio build, weekly maintenance, memory digest']]
+    .forEach(([t,d])=>print('  '+t+'  '+d, C.white));
+    print('  still running, still humming.', C.dim); },
+  contact(){ print('contact', C.amber);
+    print('  github    github.com/henrylee94', C.white);
+    print('  linkedin  linkedin.com/in/henry-lee-985300158', C.white);
+    print('  or the full portfolio →  open portfolio', C.dim); },
   top(){ print('top — up since May 2026 · load 0.42 0.38 0.30', C.amber);
     print('  PID   %CPU  %MEM  COMMAND', C.dim);
     [['1042','2.1','6.4','hermes-agent'],['1088','0.4','1.1','fastapi-trading'],
