@@ -163,6 +163,7 @@ beam.position.set(0, 1.7, 0); beam.rotation.y = Math.PI/4; holo.add(beam);
 const PROMPT = 'henry@home:~$ ';
 const C = { cyan:'#7ff0ff', dim:'#3f7f8f', amber:'#f0a63c', white:'#dff3fb', ok:'#4dff9a' };
 let history = [], input = '', booted = false, accepting = false, cursorOn = true;
+let cmdHist = [], histIdx = 0;
 const LH = 24, PAD_X = 34, PAD_TOP = 40, MAX_ROWS = 19;
 function print(t='', c=C.cyan){ t.split('\n').forEach(l=>history.push({t:l,c})); }
 setInterval(()=>cursorOn=!cursorOn, 480);
@@ -203,12 +204,42 @@ const SERVICES = [
   ['daily-news',      'running', 'static daily-news page'],
   ['tailscale',       'up',      'mesh VPN · zero open ports · portproxy -> WSL'],
 ];
+const FS = {
+  'README.md':            ['henry.home — my home lab. one mini-PC, 24/7,',
+                           'everything behind Tailscale. poke around:',
+                           'ls · cat <file> · ps · ping <host> · hermes · neofetch'],
+  'hermes/SOUL.md':       ['the agent\'s identity layer — who it is,',
+                           'before what it knows.'],
+  'hermes/MEMORY.md':     ['layered long-term memory. facts that survive',
+                           'across sessions. 73 skills sit on top.'],
+  'notes/local-models.md':['postmortem: the local models lost.',
+                           'Qwen 2.5 7B / Llama 3.1 8B, CPU-only inference,',
+                           'couldn\'t keep up with multi-round tool calls.',
+                           '-> tiered router: routine = budget cloud,',
+                           '   deep reasoning = one heavyweight.'],
+  'services/trading.py':  ['self-hosted FastAPI trading server.'],
+  'services/news.html':   ['static daily-news page, regenerated each morning.'],
+};
 const CMDS = {
   help(){ print('commands:', C.amber);
-    [['neofetch','the box, at a glance'],['services','what\'s running 24/7'],
+    [['neofetch','the box, at a glance'],['ls','list the filesystem'],
+     ['cat <file>','read a file'],['ps','running processes'],
+     ['services','what\'s running 24/7'],['ping <host>','reach a mesh node'],
      ['hermes','the self-hosted agent'],['uptime','how long it\'s been up'],
      ['whoami','who runs this'],['clear','wipe the screen']]
-    .forEach(([c,d])=>print('  '+c.padEnd(11)+d, C.dim)); },
+    .forEach(([c,d])=>print('  '+c.padEnd(13)+d, C.dim)); },
+  ls(){ print('~/', C.amber); Object.keys(FS).forEach(f=>print('  '+f, C.cyan));
+    print('use: cat <file>', C.dim); },
+  cat(a){ const f=FS[a]; if(!f){ print('no such file: '+(a||''), C.amber); print('try: ls', C.dim); return; }
+    print('┌─ '+a, C.amber); f.forEach(l=>print('  '+l, C.white)); print('└─', C.amber); },
+  ps(){ print('  PID   CPU    SERVICE', C.amber);
+    [['1042','2.1%','hermes-agent'],['1088','0.4%','fastapi-trading'],
+     ['1103','0.1%','daily-news'],['312','0.0%','tailscaled']]
+    .forEach(([p,c,s])=>print('  '+p.padEnd(6)+c.padEnd(7)+s, C.ok)); },
+  ping(a){ if(!a){ print('usage: ping <host>   (try: ping hermes)', C.dim); return; }
+    print('PING '+a+' via tailscale mesh ...', C.dim);
+    ['64 bytes  time=0.8 ms','64 bytes  time=0.7 ms','64 bytes  time=0.9 ms']
+    .forEach(l=>print('  '+l, C.cyan)); print('0% packet loss · mesh healthy', C.ok); },
   neofetch(){ NEO.forEach(l=>print(l, l.includes('henry@')||l.includes('---')?C.amber:C.cyan)); },
   services(){ print('services // '+SERVICES.length+' running', C.amber);
     SERVICES.forEach(([n,s,d])=>{ print('  ● '+n.padEnd(16)+s.padEnd(9), C.ok);
@@ -226,7 +257,8 @@ const CMDS = {
   clear(){ history = []; },
 };
 function run(raw){ const line = raw.trim(); print(PROMPT + line, C.cyan);
-  if(!line) return; const [cmd,...r] = line.split(/\s+/);
+  if(!line) return; cmdHist.push(line); histIdx = cmdHist.length;
+  const [cmd,...r] = line.split(/\s+/);
   const fn = CMDS[cmd]; if(fn) fn(r.join(' '));
   else { print('command not found: '+cmd, C.amber); print('type: help', C.dim); } }
 
@@ -259,6 +291,8 @@ addEventListener('keydown', e=>{
   if(!accepting) return;
   if(e.key==='Enter'){ run(input); input=''; e.preventDefault(); }
   else if(e.key==='Backspace'){ input=input.slice(0,-1); e.preventDefault(); }
+  else if(e.key==='ArrowUp'){ if(cmdHist.length){ histIdx=Math.max(0,histIdx-1); input=cmdHist[histIdx]; } e.preventDefault(); }
+  else if(e.key==='ArrowDown'){ histIdx=Math.min(cmdHist.length,histIdx+1); input=cmdHist[histIdx]||''; e.preventDefault(); }
   else if(e.key.length===1 && !e.metaKey && !e.ctrlKey){ input+=e.key; e.preventDefault(); }
 });
 let downXY=null;
