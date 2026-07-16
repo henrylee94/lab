@@ -3,146 +3,447 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Henry Lee — The Lab · interactive showcases</title>
-<meta name="description" content="Interactive things Henry builds when nobody's paying him to — boot a 3D home lab, run a live scalping desk." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<title>henry.home — boot the home lab</title>
 <style>
-  :root { --bg:#06070c; --fg:#e8eef2; --dim:#7d8894; --cyan:#4de3ff; --amber:#f0a63c; }
+  :root { --cyan:#4de3ff; --amber:#f0a63c; --bg:#05070c; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body { background:var(--bg); color:var(--fg); font-family:"Space Grotesk",system-ui,sans-serif;
-    min-height:100vh; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
-  #bg { position:fixed; inset:0; z-index:0; }
-  .wrap { position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:8vh 6vw 6vh; }
-  .serif { font-family:"Instrument Serif",serif; font-style:italic; }
-
-  header .eyebrow { font-family:ui-monospace,monospace; color:var(--amber); font-size:12px;
-    letter-spacing:.2em; text-transform:uppercase; }
-  header h1 { font-size:clamp(2.6rem,7vw,5rem); line-height:1; letter-spacing:-.03em; margin:16px 0 12px; }
-  header h1 .g { background:linear-gradient(100deg,var(--cyan),var(--amber)); -webkit-background-clip:text;
-    background-clip:text; color:transparent; }
-  header p { color:var(--dim); font-size:clamp(1rem,2vw,1.25rem); max-width:52ch; line-height:1.55; }
-
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:22px; margin-top:7vh; }
-  .card { position:relative; display:block; text-decoration:none; color:inherit; overflow:hidden;
-    border:1px solid #18202b; border-radius:14px; background:#0a0e15; min-height:260px;
-    transition:transform .35s cubic-bezier(.2,.7,.2,1), border-color .35s, box-shadow .35s; }
-  .card:hover { transform:translateY(-6px); border-color:#2a3a4a;
-    box-shadow:0 20px 50px -20px rgba(77,227,255,.25); }
-  .card .thumb { height:150px; position:relative; overflow:hidden; }
-  .card .thumb canvas { position:absolute; inset:0; width:100%; height:100%; }
-  .card .body { padding:18px 20px 22px; }
-  .card .kind { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.14em;
-    text-transform:uppercase; color:var(--cyan); }
-  .card h2 { font-size:1.5rem; margin:6px 0 8px; letter-spacing:-.01em; }
-  .card p { color:var(--dim); font-size:.92rem; line-height:1.5; }
-  .card .go { margin-top:14px; color:var(--amber); font-family:ui-monospace,monospace; font-size:13px; }
-  .card.soon { opacity:.5; pointer-events:none; }
-  .card.soon .kind { color:var(--dim); }
-  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
-  .tags span { font-family:ui-monospace,monospace; font-size:10.5px; color:var(--dim);
-    border:1px solid #1c2530; border-radius:20px; padding:3px 9px; }
-
-  footer { margin-top:9vh; padding-top:28px; border-top:1px solid #141b24; color:var(--dim);
-    font-size:13px; display:flex; flex-wrap:wrap; gap:18px; align-items:center; justify-content:space-between; }
-  footer a { color:var(--dim); text-decoration:none; } footer a:hover { color:var(--cyan); }
-  footer .links a { margin-left:16px; }
+  html,body { height:100%; background:var(--bg); overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; color:#cfeaf2; }
+  #app { position:fixed; inset:0; }
+  .tag { position:fixed; top:20px; left:22px; z-index:5; font-size:12px; color:#5c6675; }
+  .tag b { color:#dff3fb; }
+  .hint { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:5;
+    font-size:12.5px; color:var(--cyan); letter-spacing:.14em; text-transform:uppercase;
+    opacity:0; transition:opacity .8s ease; text-shadow:0 0 12px rgba(77,227,255,.6); }
+  .hint.show { opacity:.85; } .hint.gone { opacity:0; pointer-events:none; }
+  .hud { position:fixed; right:22px; bottom:20px; z-index:5; font-size:11.5px; color:#4a5665;
+    text-align:right; line-height:1.7; }
+  .back { position:fixed; top:20px; right:22px; z-index:5; font-size:12px; color:#5c6675;
+    text-decoration:none; } .back:hover { color:var(--cyan); }
+  .vignette { position:fixed; inset:0; z-index:3; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.6) 100%); }
 </style>
 </head>
 <body>
-  <canvas id="bg"></canvas>
-  <div class="wrap">
-    <header>
-      <div class="eyebrow">Henry Lee · the lab</div>
-      <h1>Things I build when <span class="g serif">nobody's paying me to.</span></h1>
-      <p>Backend Team Lead by day. At night these run on a mini-PC in my living room. Each one is a small, real, interactive thing — click in and poke around.</p>
-    </header>
+  <div class="tag"><b>henry.home</b> · the lab · running 24/7</div>
+  <a class="back" href="../portfolio-website/index.html">the portfolio ↗</a>
+  <div class="hint" id="hint">▶ click / press any key to power on</div>
+  <div class="hud">drag to orbit · scroll to zoom<br />once booted: type <b>help</b> · <b>showcases</b> · <b>menu</b></div>
+  <div id="app"></div>
+  <div class="vignette"></div>
 
-    <div class="grid">
-      <a class="card" href="showcase-homelab.html">
-        <div class="thumb"><canvas data-thumb="home"></canvas></div>
-        <div class="body">
-          <div class="kind">3D · Three.js</div>
-          <h2>Boot henry.home</h2>
-          <p>Power on a 3D UM890 mini-PC; it projects a holographic terminal. Explore the real home lab — <code>hermes</code>, <code>services</code>, the rules my agents live by.</p>
-          <div class="tags"><span>WebGL</span><span>bloom</span><span>live terminal</span><span>Tailscale mesh</span></div>
-          <div class="go">▶ boot it →</div>
-        </div>
-      </a>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+}}
+</script>
 
-      <a class="card" href="showcase-scalp.html">
-        <div class="thumb"><canvas data-thumb="scalp"></canvas></div>
-        <div class="body">
-          <div class="kind">2D · live canvas</div>
-          <h2>scalp-analyzer</h2>
-          <p>A live US-stock scalping desk: candles, EMA &amp; VWAP, a confluence checklist and a 0–10 safety score. Type <code>check NVDA</code> for the entry/target/stop card.</p>
-          <div class="tags"><span>EMA·VWAP·RSI</span><span>7 setups</span><span>Claude Code skill</span></div>
-          <div class="go">▶ open the desk →</div>
-        </div>
-      </a>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-      <div class="card soon">
-        <div class="thumb"><canvas data-thumb="soon"></canvas></div>
-        <div class="body">
-          <div class="kind">coming soon</div>
-          <h2>stock-sentry</h2>
-          <p>A multi-agent trading assistant in Telegram — analyzer → strategy → backtester → verdict. Being desensitized before it ships here.</p>
-          <div class="go">— soon —</div>
-        </div>
-      </div>
-    </div>
+const CYAN = 0x4de3ff, AMBER = 0xf0a63c;
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070c);
+scene.fog = new THREE.FogExp2(0x05070c, 0.05);
 
-    <footer>
-      <a href="../portfolio-website/index.html">← back to the main portfolio</a>
-      <span class="links">
-        <a href="https://github.com/henrylee94" target="_blank" rel="noopener">github</a>
-        <a href="https://www.linkedin.com/in/henry-lee-985300158" target="_blank" rel="noopener">linkedin</a>
-      </span>
-    </footer>
-  </div>
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 100);
+const CAM_TO = new THREE.Vector3(2.4, 1.9, 4.2);
+camera.position.set(7, 5, 9);
 
-<script>
-// ambient background — drifting particles
-(function(){
-  const c=document.getElementById('bg'), x=c.getContext('2d'); let W,H,dots=[];
-  function rs(){ W=c.width=innerWidth; H=c.height=innerHeight;
-    dots=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,
-      r:Math.random()*1.6+.3,s:Math.random()*.3+.05})); }
-  rs(); addEventListener('resize',rs);
-  (function d(){ requestAnimationFrame(d); x.clearRect(0,0,W,H);
-    dots.forEach(p=>{ p.y-=p.s; if(p.y<0)p.y=H; x.fillStyle='rgba(77,227,255,'+(p.r*.14)+')';
-      x.beginPath(); x.arc(p.x,p.y,p.r,0,7); x.fill(); }); })();
-})();
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
 
-// tiny live thumbnails
-document.querySelectorAll('canvas[data-thumb]').forEach(cv=>{
-  const kind=cv.dataset.thumb, x=cv.getContext('2d');
-  function sz(){ cv.width=cv.offsetWidth; cv.height=cv.offsetHeight; }
-  const ro=new ResizeObserver(sz); ro.observe(cv); sz();
-  let t=0;
-  (function d(){ requestAnimationFrame(d); t++; const W=cv.width,H=cv.height;
-    x.fillStyle='#080c13'; x.fillRect(0,0,W,H);
-    if(kind==='home'){ // pulsing node mesh into a center box
-      const cx=W/2,cy=H/2; for(let i=0;i<7;i++){ const a=i/7*6.28+t*0.004, r=Math.min(W,H)*0.4;
-        const nx=cx+Math.cos(a)*r, ny=cy+Math.sin(a)*r*0.7;
-        x.strokeStyle='rgba(77,227,255,0.18)'; x.beginPath(); x.moveTo(nx,ny); x.lineTo(cx,cy); x.stroke();
-        const pt=(t*0.01+i/7)%1; x.fillStyle='#dff'; x.beginPath();
-        x.arc(nx+(cx-nx)*pt, ny+(cy-ny)*pt, 1.6, 0, 7); x.fill();
-        x.fillStyle='#4de3ff'; x.beginPath(); x.arc(nx,ny,2,0,7); x.fill(); }
-      x.fillStyle='#4de3ff'; x.fillRect(cx-14,cy-9,28,18); x.fillStyle='#081018'; x.fillRect(cx-10,cy-5,20,10);
-    } else if(kind==='scalp'){ // mini candlesticks
-      const n=18, cw=W/n; let p=H*0.55;
-      for(let i=0;i<n;i++){ p+=Math.sin(i*0.7+t*0.02)*4+(Math.random()-0.5)*3;
-        const o=p, cl=p+Math.sin(i+t*0.03)*6, up=cl<=o;
-        x.strokeStyle=up?'#26d07c':'#ff5c6c'; x.fillStyle=up?'#26d07c':'#ff5c6c';
-        const xx=i*cw+cw/2; x.fillRect(xx-cw*0.25, Math.min(o,cl), cw*0.5, Math.abs(o-cl)+2); }
-      x.strokeStyle='rgba(240,166,60,0.6)'; x.beginPath();
-      for(let i=0;i<n;i++){ const xx=i*cw, yy=H*0.5+Math.sin(i*0.5+t*0.02)*8; i?x.lineTo(xx,yy):x.moveTo(xx,yy);} x.stroke();
-    } else { x.fillStyle='#141b24'; x.font='12px monospace'; x.textAlign='center';
-      x.fillText('◍ desensitizing…', W/2, H/2); x.textAlign='left'; }
-  })();
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.enabled = false;
+controls.minDistance = 3; controls.maxDistance = 12;
+controls.maxPolarAngle = Math.PI * 0.53;
+controls.target.set(0, 1.1, 0);
+
+// bloom postprocessing — only bright emissive things glow
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.75, 0.55, 0.82);
+composer.addPass(bloom);
+
+// ---- lighting ----
+scene.add(new THREE.AmbientLight(0x1a2430, 0.8));
+const key = new THREE.DirectionalLight(0xbcd6ff, 0.9);
+key.position.set(5, 8, 4); key.castShadow = true;
+key.shadow.mapSize.set(2048,2048); key.shadow.radius = 8; scene.add(key);
+const rim = new THREE.SpotLight(AMBER, 30, 20, Math.PI/6, 0.8, 1.5);
+rim.position.set(-6, 4, -5); scene.add(rim);
+const under = new THREE.PointLight(CYAN, 0.0, 5); under.position.set(0, 0.35, 0); scene.add(under);
+
+// ---- floor + grid ----
+const floor = new THREE.Mesh(new THREE.CircleGeometry(22, 64),
+  new THREE.MeshStandardMaterial({ color:0x080b11, roughness:0.7, metalness:0.25 }));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(40, 80, 0x14202c, 0x0c141c); scene.add(grid);
+
+// ============================================================ UM890 mini-PC
+const pc = new THREE.Group(); scene.add(pc);
+const shell = new THREE.MeshStandardMaterial({ color:0x15181e, roughness:0.4, metalness:0.8 });
+const dark  = new THREE.MeshStandardMaterial({ color:0x0a0c10, roughness:0.5, metalness:0.6 });
+function box(w,h,d,mat,x,y,z,g){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; (g||pc).add(m); return m; }
+
+box(1.9, 0.66, 1.9, shell, 0, 0.55, 0);          // body (wide flat mini-PC)
+box(1.7, 0.03, 1.7, dark, 0, 0.885, 0);          // top plate inset
+// top vent grooves
+const ventMat = new THREE.MeshStandardMaterial({ color:0x05070a, roughness:0.7 });
+for(let i=-3;i<=3;i++) box(1.4, 0.02, 0.05, ventMat, 0, 0.9, i*0.14);
+// front panel details
+box(1.75, 0.42, 0.02, dark, 0, 0.5, 0.955);      // front face
+// USB / port insets
+for(let i=0;i<3;i++) box(0.12, 0.06, 0.02, ventMat, -0.5+i*0.22, 0.42, 0.966);
+// glowing accent strip along the base (blooms)
+const accentMat = new THREE.MeshStandardMaterial({ color:CYAN, emissive:CYAN, emissiveIntensity:1.2 });
+box(1.92, 0.015, 0.02, accentMat, 0, 0.24, 0.955);
+box(0.02, 0.015, 1.92, accentMat, 0.955, 0.24, 0);
+box(0.02, 0.015, 1.92, accentMat, -0.955, 0.24, 0);
+// rubber feet
+for(const [fx,fz] of [[0.8,0.8],[-0.8,0.8],[0.8,-0.8],[-0.8,-0.8]])
+  box(0.16, 0.04, 0.16, dark, fx, 0.02, fz);
+// soft glow decal on the floor under the box
+const decal = new THREE.Mesh(new THREE.CircleGeometry(2.4, 48),
+  new THREE.MeshBasicMaterial({ color:CYAN, transparent:true, opacity:0.05, depthWrite:false }));
+decal.rotation.x = -Math.PI/2; decal.position.y = 0.005; scene.add(decal);
+// power button (interactive)
+const powerMat = new THREE.MeshStandardMaterial({ color:CYAN, emissive:CYAN, emissiveIntensity:0.4, roughness:0.3 });
+const power = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.03,24), powerMat);
+power.rotation.x = Math.PI/2; power.position.set(0.62, 0.6, 0.965); pc.add(power);
+// activity LEDs
+const leds = [];
+for(let i=0;i<3;i++){
+  const m = new THREE.MeshStandardMaterial({ color:0x113322, emissive:0x1e7a3f, emissiveIntensity:0.6 });
+  const l = new THREE.Mesh(new THREE.CircleGeometry(0.022,16), m);
+  l.position.set(0.35+i*0.09, 0.6, 0.966); pc.add(l); leds.push(m);
+}
+// brand text on top
+const bc = document.createElement('canvas'); bc.width=512; bc.height=64;
+const bx = bc.getContext('2d'); bx.fillStyle='#3a4656'; bx.font='bold 34px ui-monospace,monospace';
+bx.fillText('UM890 PRO  ·  henry.home', 10, 46);
+const brand = new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.19),
+  new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(bc), transparent:true, opacity:0.5 }));
+brand.rotation.x = -Math.PI/2; brand.position.set(0,0.902,0.55); pc.add(brand);
+
+// ============================================================ Tailscale mesh (devices -> home server)
+const mesh = new THREE.Group(); scene.add(mesh);
+const NODES = 6, nodePts = [], pulses = [];
+const lineMat = new THREE.LineBasicMaterial({ color:CYAN, transparent:true, opacity:0.16 });
+const nodeMat = new THREE.MeshBasicMaterial({ color:CYAN });
+for(let i=0;i<NODES;i++){
+  const a = (i/NODES)*Math.PI*2, r = 3.4 + (i%2)*0.7;
+  const p = new THREE.Vector3(Math.cos(a)*r, 1.1 + Math.sin(i*1.7)*1.0, Math.sin(a)*r);
+  nodePts.push(p);
+  const n = new THREE.Mesh(new THREE.SphereGeometry(0.05,12,12), nodeMat);
+  n.position.copy(p); mesh.add(n);
+  const geo = new THREE.BufferGeometry().setFromPoints([p, new THREE.Vector3(0,0.9,0)]);
+  mesh.add(new THREE.Line(geo, lineMat));
+  const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8),
+    new THREE.MeshBasicMaterial({ color:0xffffff }));
+  pulse.userData = { from:p.clone(), to:new THREE.Vector3(0,0.9,0), t:Math.random(), spd:0.004+Math.random()*0.006 };
+  mesh.add(pulse); pulses.push(pulse);
+}
+mesh.visible = false; // appears on boot
+
+// ============================================================ rising ambient particles
+const PN = 260, pgeo = new THREE.BufferGeometry(), ppos = new Float32Array(PN*3), pspd = [];
+for(let i=0;i<PN;i++){
+  ppos[i*3]=(Math.random()-0.5)*8; ppos[i*3+1]=Math.random()*6; ppos[i*3+2]=(Math.random()-0.5)*8;
+  pspd.push(0.002+Math.random()*0.006);
+}
+pgeo.setAttribute('position', new THREE.BufferAttribute(ppos,3));
+const particles = new THREE.Points(pgeo,
+  new THREE.PointsMaterial({ color:CYAN, size:0.03, transparent:true, opacity:0.4 }));
+scene.add(particles);
+
+// ============================================================ holographic terminal panel
+const scrCanvas = document.createElement('canvas'); scrCanvas.width=860; scrCanvas.height=560;
+const ctx = scrCanvas.getContext('2d');
+const scrTex = new THREE.CanvasTexture(scrCanvas); scrTex.colorSpace = THREE.SRGBColorSpace;
+const holo = new THREE.Group(); scene.add(holo);
+const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.7),
+  new THREE.MeshBasicMaterial({ map:scrTex, transparent:true, opacity:0.0, depthWrite:false }));
+panel.position.set(0, 2.55, 0); panel.rotation.x = -0.08; holo.add(panel);
+// projection beam (box -> panel)
+const beamMat = new THREE.MeshBasicMaterial({ color:CYAN, transparent:true, opacity:0.0, side:THREE.DoubleSide, depthWrite:false });
+const beam = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.7, 4, 1, true), beamMat);
+beam.position.set(0, 1.7, 0); beam.rotation.y = Math.PI/4; holo.add(beam);
+
+// ---- terminal engine ----
+const PROMPT = 'henry@home:~$ ';
+const C = { cyan:'#7ff0ff', dim:'#3f7f8f', amber:'#f0a63c', white:'#dff3fb', ok:'#4dff9a' };
+let history = [], input = '', booted = false, accepting = false, cursorOn = true;
+let cmdHist = [], histIdx = 0;
+let typeQ = [], typing = null, typedN = 0, flash = 0;   // boot typewriter + screen flash
+const LH = 24, PAD_X = 34, PAD_TOP = 40, MAX_ROWS = 19;
+function print(t='', c=C.cyan){ t.split('\n').forEach(l=>history.push({t:l,c})); }
+setInterval(()=>cursorOn=!cursorOn, 480);
+
+function drawScreen(){
+  ctx.clearRect(0,0,860,560);
+  // holo backdrop
+  ctx.fillStyle = 'rgba(6,20,28,0.82)'; ctx.fillRect(0,0,860,560);
+  // header bar
+  ctx.fillStyle = 'rgba(77,227,255,0.10)'; ctx.fillRect(0,0,860,34);
+  ctx.fillStyle = C.amber; ctx.font = '16px ui-monospace, monospace'; ctx.textBaseline='middle';
+  ctx.fillText('● henry.home — home lab // 24/7', 16, 18);
+  // body
+  ctx.textBaseline = 'top'; ctx.font = '17px ui-monospace, monospace';
+  const rows = [...history];
+  if(typing) rows.push({ t: typing.t.slice(0, Math.floor(typedN)) + '▋', c: typing.c });
+  if(accepting) rows.push({ t: PROMPT + input + (cursorOn?'█':' '), c:C.cyan });
+  rows.slice(-MAX_ROWS).forEach((r,i)=>{ ctx.fillStyle=r.c; ctx.fillText(r.t, PAD_X, PAD_TOP+i*LH); });
+  // scanlines + glow border
+  ctx.fillStyle='rgba(0,0,0,0.10)'; for(let y=34;y<560;y+=3) ctx.fillRect(0,y,860,1);
+  ctx.strokeStyle='rgba(77,227,255,0.5)'; ctx.lineWidth=3; ctx.strokeRect(2,2,856,556);
+  if(flash>0){ ctx.fillStyle='rgba(200,245,255,'+(flash*0.7)+')'; ctx.fillRect(0,0,860,560); }
+  scrTex.needsUpdate = true;
+}
+
+// ---- home-lab content ----
+const NEO = [
+  '        ___________            henry@home.lab',
+  '       /  ._______. \\          ------------------------',
+  '      |  |  o o    | |         host   Minisforum UM890 Pro',
+  '      |  |_________| |         cpu    Ryzen 9 8945HS  8c/16t',
+  '      |   UM890 PRO  |         mem    32 GB',
+  '       \\____________/          os     Win11 · WSL2 Ubuntu',
+  '        [==========]           up     24/7 since May 2026',
+  '                               net    Tailscale · 0 open ports',
+];
+const SERVICES = [
+  ['hermes-agent',    'running', 'Nous Research framework, bare-metal in WSL2'],
+  ['fastapi-trading', 'running', 'self-hosted trading server'],
+  ['daily-news',      'running', 'static daily-news page'],
+  ['tailscale',       'up',      'mesh VPN · zero open ports · portproxy -> WSL'],
+];
+const FS = {
+  'README.md':            ['henry.home — my home lab. one mini-PC, 24/7,',
+                           'everything behind Tailscale. poke around:',
+                           'ls · cat <file> · ps · ping <host> · hermes · neofetch'],
+  'hermes/SOUL.md':       ['the agent\'s identity layer — who it is,',
+                           'before what it knows.'],
+  'hermes/MEMORY.md':     ['layered long-term memory. facts that survive',
+                           'across sessions. 73 skills sit on top.'],
+  'notes/local-models.md':['postmortem: the local models lost.',
+                           'Qwen 2.5 7B / Llama 3.1 8B, CPU-only inference,',
+                           'couldn\'t keep up with multi-round tool calls.',
+                           '-> tiered router: routine = budget cloud,',
+                           '   deep reasoning = one heavyweight.'],
+  'services/trading.py':  ['self-hosted FastAPI trading server.'],
+  'services/news.html':   ['static daily-news page, regenerated each morning.'],
+  'agents/RULES.md':      ['the standing rules every agent here runs under —',
+                           'same at work, same at home.  run: rules'],
+  'work/ai-sdlc.md':      ['how I actually ship features with agents.',
+                           'run: ai'],
+};
+const CMDS = {
+  help(){ print('commands:', C.amber);
+    [['neofetch','the box, at a glance'],['ls','list the filesystem'],
+     ['cat <file>','read a file'],['ps','running processes'],['top','live-ish process view'],
+     ['services','what\'s running 24/7'],['ping <host>','reach a mesh node'],
+     ['hermes','the self-hosted agent'],['rules','the rules my agents live by'],
+     ['ai','how I ship with agents'],['showcases','my other builds'],
+     ['open <name>','launch a showcase'],['uptime','how long it\'s been up'],
+     ['whoami','who runs this'],['clear','wipe the screen']]
+    .forEach(([c,d])=>print('  '+c.padEnd(13)+d, C.dim)); },
+  rules(){ print('the rules my agents live by — same at work, same at home:', C.amber);
+    ['0  no guessing. verify before speaking; if you can\'t, say so.',
+     '1  my words mean exactly what they say. don\'t interpret — ask.',
+     '2  execute only what was asked. "while I\'m here…" starts incidents.',
+     '3  show proof after every write. a file path is evidence, not "done".',
+     '4  discussion is not permission.',
+     '5  "it ran" is not "it works." verify after every execution.']
+    .forEach(l=>print('  '+l, C.white));
+    print('  ── Slow is fine. Wrong is not.', C.ok); },
+  ai(){ print('AI-native SDLC — how I ship with agents:', C.amber);
+    ['10-stage pipeline: PRD → design → contracts → SDK →',
+     '   tasks → parallel agent dev → machine-judged acceptance',
+     '24 skills · 8.7k lines      16 features shipped',
+     '30+ per-service context      4 role-based AI reviewers']
+    .forEach(l=>print('  '+l, C.white));
+    print('  ──', C.amber);
+    ['a two-day build → a two-hour first draft.',
+     'the last 20% is still ours. the real skill is discernment:',
+     'catching what it got wrong. discernment first, delegation second.']
+    .forEach(l=>print('  '+l, C.cyan)); },
+  ls(){ print('~/', C.amber); Object.keys(FS).forEach(f=>print('  '+f, C.cyan));
+    print('use: cat <file>', C.dim); },
+  cat(a){ const f=FS[a]; if(!f){ print('no such file: '+(a||''), C.amber); print('try: ls', C.dim); return; }
+    print('┌─ '+a, C.amber); f.forEach(l=>print('  '+l, C.white)); print('└─', C.amber); },
+  ps(){ print('  PID   CPU    SERVICE', C.amber);
+    [['1042','2.1%','hermes-agent'],['1088','0.4%','fastapi-trading'],
+     ['1103','0.1%','daily-news'],['312','0.0%','tailscaled']]
+    .forEach(([p,c,s])=>print('  '+p.padEnd(6)+c.padEnd(7)+s, C.ok)); },
+  ping(a){ if(!a){ print('usage: ping <host>   (try: ping hermes)', C.dim); return; }
+    print('PING '+a+' via tailscale mesh ...', C.dim);
+    ['64 bytes  time=0.8 ms','64 bytes  time=0.7 ms','64 bytes  time=0.9 ms']
+    .forEach(l=>print('  '+l, C.cyan)); print('0% packet loss · mesh healthy', C.ok); },
+  neofetch(){ NEO.forEach(l=>print(l, l.includes('henry@')||l.includes('---')?C.amber:C.cyan)); },
+  services(){ print('services // '+SERVICES.length+' running', C.amber);
+    SERVICES.forEach(([n,s,d])=>{ print('  ● '+n.padEnd(16)+s.padEnd(9), C.ok);
+      print('    '+d, C.dim); }); },
+  hermes(){ print('┌─ hermes — my self-hosted agent', C.amber);
+    ['Nous Research open-source framework, bare-metal in WSL2.',
+     'reachable via Telegram + WhatsApp gateways.',
+     'layered memory: SOUL.md / MEMORY.md / skills — 73 loaded.',
+     'running since May 2026.',
+     'honest lesson: the local models were the weak point.']
+    .forEach(l=>print('  '+l, C.white)); print('└─', C.amber); },
+  top(){ print('top — up since May 2026 · load 0.42 0.38 0.30', C.amber);
+    print('  PID   %CPU  %MEM  COMMAND', C.dim);
+    [['1042','2.1','6.4','hermes-agent'],['1088','0.4','1.1','fastapi-trading'],
+     ['1103','0.1','0.3','daily-news'],['312','0.0','0.2','tailscaled'],
+     ['1','0.0','0.1','systemd']]
+    .forEach(([p,c,m,s])=>print('  '+p.padEnd(6)+c.padEnd(6)+m.padEnd(6)+s, C.ok)); },
+  uptime(){ print('up since May 2026 · still humming in the living room.', C.white); },
+  whoami(){ print('Henry Lee — Backend Team Lead by day,', C.white);
+    print('home-lab tinkerer by night. This box is the night shift.', C.dim); },
+  history(){ if(!cmdHist.length){ print('no history yet.', C.dim); return; }
+    cmdHist.forEach((c,i)=>print('  '+String(i+1).padStart(3)+'  '+c, C.dim)); },
+  sudo(){ print('nice try. this box runs on trust, not root.', C.amber);
+    print('(the banking credentials stay red. forever.)', C.dim); },
+  showcases(){ print('other things in the lab:', C.amber);
+    print('  scalp        a live scalping desk        → open scalp', C.cyan);
+    print('  stock-sentry a telegram trading agent    (soon · desensitizing)', C.dim);
+    print('  menu         the visual grid of everything', C.dim);
+    print('  the portfolio (my day job & case studies) → open portfolio', C.dim); },
+  open(a){ const map={ scalp:'showcase-scalp.html', menu:'lab.html',
+      lab:'lab.html', portfolio:'../portfolio-website/index.html' };
+    const u=map[(a||'').toLowerCase()];
+    if(!u){ print('open what? try: showcases', C.dim); return; }
+    print('opening '+a+' …', C.ok); setTimeout(()=>{ location.href=u; }, 450); },
+  menu(){ print('opening the visual grid …', C.ok); setTimeout(()=>{ location.href='lab.html'; }, 450); },
+  clear(){ history = []; },
+};
+function run(raw){ const line = raw.trim(); print(PROMPT + line, C.cyan);
+  if(!line) return; cmdHist.push(line); histIdx = cmdHist.length;
+  const [cmd,...r] = line.split(/\s+/);
+  const fn = CMDS[cmd]; if(fn) fn(r.join(' '));
+  else { print('command not found: '+cmd, C.amber); print('type: help', C.dim); } }
+
+// ---- boot ----
+const BOOT = [
+  { t:'UM890 PRO — power on', c:C.dim },
+  { t:'WSL2 Ubuntu ... ok', c:C.dim },
+  { t:'[ OK ] hermes-agent      up', c:C.ok },
+  { t:'[ OK ] fastapi-trading   up', c:C.ok },
+  { t:'[ OK ] tailscale mesh    0 open ports', c:C.ok },
+  { t:'', c:C.cyan },
+  { t:"you're inside henry.home — the home lab.", c:C.amber },
+  { t:'type  help  to look around.', c:C.amber },
+  { t:'', c:C.cyan },
+];
+function boot(){
+  if(booted) return; booted = true;
+  document.getElementById('hint').classList.add('gone');
+  powerMat.emissiveIntensity = 2.4; mesh.visible = true;
+  flash = 1;                       // screen power-on flash
+  typeQ = BOOT.slice();            // typed char-by-char in the render loop
+  bootSound();
+}
+// soft two-tone power-on chime (synth, no assets). user gesture unlocks audio.
+let actx;
+function bootSound(){
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const now = actx.currentTime;
+    [[330, 0], [494, 0.12], [659, 0.24]].forEach(([f, t]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, now + t);
+      g.gain.exponentialRampToValueAtTime(0.06, now + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.18);
+      o.connect(g).connect(actx.destination); o.start(now + t); o.stop(now + t + 0.2);
+    });
+  } catch (e) { /* audio blocked — silent is fine */ }
+}
+
+// ---- input ----
+addEventListener('keydown', e=>{
+  if(!booted){ boot(); return; }
+  if(!accepting) return;
+  if(e.key==='Enter'){ run(input); input=''; e.preventDefault(); }
+  else if(e.key==='Backspace'){ input=input.slice(0,-1); e.preventDefault(); }
+  else if(e.key==='ArrowUp'){ if(cmdHist.length){ histIdx=Math.max(0,histIdx-1); input=cmdHist[histIdx]; } e.preventDefault(); }
+  else if(e.key==='ArrowDown'){ histIdx=Math.min(cmdHist.length,histIdx+1); input=cmdHist[histIdx]||''; e.preventDefault(); }
+  else if(e.key==='Tab'){ const s=input.trim();
+    const m=Object.keys(CMDS).filter(k=>k.startsWith(s));
+    if(s && m.length===1) input=m[0];
+    else if(m.length>1){ print(PROMPT+input, C.cyan); print(m.join('   '), C.dim); }
+    e.preventDefault(); }
+  else if(e.key.length===1 && !e.metaKey && !e.ctrlKey){ input+=e.key; e.preventDefault(); }
 });
+let downXY=null;
+renderer.domElement.addEventListener('pointerdown', e=>downXY=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup', e=>{
+  const moved = downXY?Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1]):99;
+  downXY=null; if(moved<6 && !booted) boot();
+});
+setTimeout(()=>document.getElementById('hint').classList.add('show'), 1300);
+
+// ============================================================ render loop
+let intro = 0, glow = 0;
+function tick(){
+  requestAnimationFrame(tick);
+  const now = performance.now();
+
+  if(intro < 1){ intro = Math.min(1, intro+0.008);
+    const e = 1-Math.pow(1-intro,3);
+    camera.position.lerpVectors(new THREE.Vector3(7,5,9), CAM_TO, e);
+    camera.lookAt(0,1.1,0); if(intro>=1) controls.enabled = true;
+  } else controls.update();
+
+  // idle power pulse / boot glow
+  power.material.emissiveIntensity = booted ? 1.8 : 0.4 + Math.sin(now*0.004)*0.25;
+  leds.forEach((m,i)=> m.emissiveIntensity = 0.4 + Math.abs(Math.sin(now*0.006 + i))*0.9);
+  if(booted){ glow = Math.min(1, glow+0.02); }
+  under.intensity = glow*1.4;
+  // holographic projection: unfold vertically + flicker while powering up
+  const flick = glow < 0.75 ? (0.45 + Math.abs(Math.sin(now*0.05))*0.55) : 1;
+  panel.material.opacity = glow*0.96*flick;
+  panel.scale.set(1, Math.max(0.02, 0.4 + glow*0.6), 1);
+  beamMat.opacity = glow*0.12*flick;
+  holo.position.y = Math.sin(now*0.001)*0.03;          // gentle float
+  panel.rotation.z = Math.sin(now*0.0008)*0.006;        // holo sway
+  if(flash>0) flash = Math.max(0, flash-0.045);
+
+  // boot typewriter — reveal BOOT lines char-by-char
+  if(!typing && typeQ.length){ typing = typeQ.shift(); typedN = 0;
+    if(typing.t === ''){ history.push(typing); typing = null; } }
+  if(typing){ typedN += 1.7;
+    if(typedN >= typing.t.length){ history.push({ t:typing.t, c:typing.c }); typing = null; } }
+  if(booted && !accepting && !typing && typeQ.length === 0) accepting = true;
+
+  // particles rise
+  const pa = particles.geometry.attributes.position;
+  for(let i=0;i<PN;i++){ let y=pa.getY(i)+pspd[i]; if(y>6) y=0; pa.setY(i,y); }
+  pa.needsUpdate = true;
+
+  // mesh pulses travel toward the box
+  if(mesh.visible) pulses.forEach(p=>{ const u=p.userData; u.t+=u.spd; if(u.t>1)u.t=0;
+    p.position.lerpVectors(u.from, u.to, u.t); });
+  mesh.rotation.y += 0.0009;
+
+  drawScreen();
+  composer.render();
+}
+tick();
+
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight); });
 </script>
 </body>
 </html>

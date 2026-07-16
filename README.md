@@ -4,11 +4,16 @@ Personal project (github.com/henrylee94). A gallery of interactive showcases —
 the "experience weapon" that complements the main portfolio (V1). Pure static:
 no backend, no build step, no server. Content reused from V1, zero rewrite.
 
+The Lab is the impact-first front door (V2). The scannable, recruiter-friendly
+content lives on the main portfolio (V1, `../portfolio-website/`). Two doors.
+
 ## Pages
-- `index.html` — the gallery / landing (deploy root)
-- `showcase-homelab.html` — **henry.home**: boot a 3D UM890 mini-PC (Three.js +
-  bloom); it projects a holographic terminal you can actually type in
-  (`help ls cat ps top ping hermes rules ai …`). Explores the real home lab.
+- `index.html` — **henry.home** (the landing): boot a 3D UM890 mini-PC (Three.js
+  + bloom); it projects a holographic terminal you can type in
+  (`help ls cat ps top ping hermes rules ai showcases open …`). It's both the
+  home-lab showcase and the Lab's hub — `showcases` / `open scalp` navigate;
+  `the portfolio ↗` goes to V1.
+- `lab.html` — visual grid of all showcases (fallback for non-typers / mobile)
 - `showcase-scalp.html` — **scalp-analyzer**: a live scalping desk on 2D canvas —
   animated candles, EMA/VWAP/RSI, a confluence checklist and a 0–10 safety
   score. Type `check NVDA` for the entry/target/stop card.
