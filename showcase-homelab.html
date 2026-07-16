@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>henry.home — boot the home lab</title>
+<style>
+  :root { --cyan:#4de3ff; --amber:#f0a63c; --bg:#05070c; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; color:#cfeaf2; }
+  #app { position:fixed; inset:0; }
+  .tag { position:fixed; top:20px; left:22px; z-index:5; font-size:12px; color:#5c6675; }
+  .tag b { color:#dff3fb; }
+  .hint { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:5;
+    font-size:12.5px; color:var(--cyan); letter-spacing:.14em; text-transform:uppercase;
+    opacity:0; transition:opacity .8s ease; text-shadow:0 0 12px rgba(77,227,255,.6); }
+  .hint.show { opacity:.85; } .hint.gone { opacity:0; pointer-events:none; }
+  .hud { position:fixed; right:22px; bottom:20px; z-index:5; font-size:11.5px; color:#4a5665;
+    text-align:right; line-height:1.7; }
+  .back { position:fixed; top:20px; right:22px; z-index:5; font-size:12px; color:#5c6675;
+    text-decoration:none; } .back:hover { color:var(--cyan); }
+  .vignette { position:fixed; inset:0; z-index:3; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.6) 100%); }
+</style>
+</head>
+<body>
+  <div class="tag">V2 · Showcase — <b>henry.home</b> · the home lab, running 24/7</div>
+  <a class="back" href="../portfolio-website/lab.html">← back to lab</a>
+  <div class="hint" id="hint">▶ click / press any key to power on</div>
+  <div class="hud">drag to orbit · scroll to zoom<br />once booted, type in the terminal</div>
+  <div id="app"></div>
+  <div class="vignette"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const CYAN = 0x4de3ff, AMBER = 0xf0a63c;
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070c);
+scene.fog = new THREE.FogExp2(0x05070c, 0.05);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 100);
+const CAM_TO = new THREE.Vector3(2.4, 1.9, 4.2);
+camera.position.set(7, 5, 9);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.enabled = false;
+controls.minDistance = 3; controls.maxDistance = 12;
+controls.maxPolarAngle = Math.PI * 0.53;
+controls.target.set(0, 1.1, 0);
+
+// ---- lighting ----
+scene.add(new THREE.AmbientLight(0x1a2430, 0.8));
+const key = new THREE.DirectionalLight(0xbcd6ff, 0.9);
+key.position.set(5, 8, 4); key.castShadow = true;
+key.shadow.mapSize.set(2048,2048); key.shadow.radius = 8; scene.add(key);
+const rim = new THREE.SpotLight(AMBER, 30, 20, Math.PI/6, 0.8, 1.5);
+rim.position.set(-6, 4, -5); scene.add(rim);
+const under = new THREE.PointLight(CYAN, 0.0, 5); under.position.set(0, 0.35, 0); scene.add(under);
+
+// ---- floor + grid ----
+const floor = new THREE.Mesh(new THREE.CircleGeometry(22, 64),
+  new THREE.MeshStandardMaterial({ color:0x080b11, roughness:0.7, metalness:0.25 }));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(40, 80, 0x14202c, 0x0c141c); scene.add(grid);
+
+// ============================================================ UM890 mini-PC
+const pc = new THREE.Group(); scene.add(pc);
+const shell = new THREE.MeshStandardMaterial({ color:0x15181e, roughness:0.4, metalness:0.8 });
+const dark  = new THREE.MeshStandardMaterial({ color:0x0a0c10, roughness:0.5, metalness:0.6 });
+function box(w,h,d,mat,x,y,z,g){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; (g||pc).add(m); return m; }
+
+box(1.9, 0.66, 1.9, shell, 0, 0.55, 0);          // body (wide flat mini-PC)
+box(1.7, 0.03, 1.7, dark, 0, 0.885, 0);          // top plate inset
+// top vent grooves
+const ventMat = new THREE.MeshStandardMaterial({ color:0x05070a, roughness:0.7 });
+for(let i=-3;i<=3;i++) box(1.4, 0.02, 0.05, ventMat, 0, 0.9, i*0.14);
+// front panel details
+box(1.75, 0.42, 0.02, dark, 0, 0.5, 0.955);      // front face
+// USB / port insets
+for(let i=0;i<3;i++) box(0.12, 0.06, 0.02, ventMat, -0.5+i*0.22, 0.42, 0.966);
+// power button (interactive)
+const powerMat = new THREE.MeshStandardMaterial({ color:CYAN, emissive:CYAN, emissiveIntensity:0.4, roughness:0.3 });
+const power = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.03,24), powerMat);
+power.rotation.x = Math.PI/2; power.position.set(0.62, 0.6, 0.965); pc.add(power);
+// activity LEDs
+const leds = [];
+for(let i=0;i<3;i++){
+  const m = new THREE.MeshStandardMaterial({ color:0x113322, emissive:0x1e7a3f, emissiveIntensity:0.6 });
+  const l = new THREE.Mesh(new THREE.CircleGeometry(0.022,16), m);
+  l.position.set(0.35+i*0.09, 0.6, 0.966); pc.add(l); leds.push(m);
+}
+// brand text on top
+const bc = document.createElement('canvas'); bc.width=512; bc.height=64;
+const bx = bc.getContext('2d'); bx.fillStyle='#3a4656'; bx.font='bold 34px ui-monospace,monospace';
+bx.fillText('UM890 PRO  ·  henry.home', 10, 46);
+const brand = new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.19),
+  new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(bc), transparent:true, opacity:0.5 }));
+brand.rotation.x = -Math.PI/2; brand.position.set(0,0.902,0.55); pc.add(brand);
+
+// ============================================================ Tailscale mesh (devices -> home server)
+const mesh = new THREE.Group(); scene.add(mesh);
+const NODES = 6, nodePts = [], pulses = [];
+const lineMat = new THREE.LineBasicMaterial({ color:CYAN, transparent:true, opacity:0.16 });
+const nodeMat = new THREE.MeshBasicMaterial({ color:CYAN });
+for(let i=0;i<NODES;i++){
+  const a = (i/NODES)*Math.PI*2, r = 3.4 + (i%2)*0.7;
+  const p = new THREE.Vector3(Math.cos(a)*r, 1.1 + Math.sin(i*1.7)*1.0, Math.sin(a)*r);
+  nodePts.push(p);
+  const n = new THREE.Mesh(new THREE.SphereGeometry(0.05,12,12), nodeMat);
+  n.position.copy(p); mesh.add(n);
+  const geo = new THREE.BufferGeometry().setFromPoints([p, new THREE.Vector3(0,0.9,0)]);
+  mesh.add(new THREE.Line(geo, lineMat));
+  const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8),
+    new THREE.MeshBasicMaterial({ color:0xffffff }));
+  pulse.userData = { from:p.clone(), to:new THREE.Vector3(0,0.9,0), t:Math.random(), spd:0.004+Math.random()*0.006 };
+  mesh.add(pulse); pulses.push(pulse);
+}
+mesh.visible = false; // appears on boot
+
+// ============================================================ rising ambient particles
+const PN = 260, pgeo = new THREE.BufferGeometry(), ppos = new Float32Array(PN*3), pspd = [];
+for(let i=0;i<PN;i++){
+  ppos[i*3]=(Math.random()-0.5)*8; ppos[i*3+1]=Math.random()*6; ppos[i*3+2]=(Math.random()-0.5)*8;
+  pspd.push(0.002+Math.random()*0.006);
+}
+pgeo.setAttribute('position', new THREE.BufferAttribute(ppos,3));
+const particles = new THREE.Points(pgeo,
+  new THREE.PointsMaterial({ color:CYAN, size:0.03, transparent:true, opacity:0.4 }));
+scene.add(particles);
+
+// ============================================================ holographic terminal panel
+const scrCanvas = document.createElement('canvas'); scrCanvas.width=860; scrCanvas.height=560;
+const ctx = scrCanvas.getContext('2d');
+const scrTex = new THREE.CanvasTexture(scrCanvas); scrTex.colorSpace = THREE.SRGBColorSpace;
+const holo = new THREE.Group(); scene.add(holo);
+const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.7),
+  new THREE.MeshBasicMaterial({ map:scrTex, transparent:true, opacity:0.0, depthWrite:false }));
+panel.position.set(0, 2.55, 0); panel.rotation.x = -0.08; holo.add(panel);
+// projection beam (box -> panel)
+const beamMat = new THREE.MeshBasicMaterial({ color:CYAN, transparent:true, opacity:0.0, side:THREE.DoubleSide, depthWrite:false });
+const beam = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.7, 4, 1, true), beamMat);
+beam.position.set(0, 1.7, 0); beam.rotation.y = Math.PI/4; holo.add(beam);
+
+// ---- terminal engine ----
+const PROMPT = 'henry@home:~$ ';
+const C = { cyan:'#7ff0ff', dim:'#3f7f8f', amber:'#f0a63c', white:'#dff3fb', ok:'#4dff9a' };
+let history = [], input = '', booted = false, accepting = false, cursorOn = true;
+const LH = 24, PAD_X = 34, PAD_TOP = 40, MAX_ROWS = 19;
+function print(t='', c=C.cyan){ t.split('\n').forEach(l=>history.push({t:l,c})); }
+setInterval(()=>cursorOn=!cursorOn, 480);
+
+function drawScreen(){
+  ctx.clearRect(0,0,860,560);
+  // holo backdrop
+  ctx.fillStyle = 'rgba(6,20,28,0.82)'; ctx.fillRect(0,0,860,560);
+  // header bar
+  ctx.fillStyle = 'rgba(77,227,255,0.10)'; ctx.fillRect(0,0,860,34);
+  ctx.fillStyle = C.amber; ctx.font = '16px ui-monospace, monospace'; ctx.textBaseline='middle';
+  ctx.fillText('● henry.home — home lab // 24/7', 16, 18);
+  // body
+  ctx.textBaseline = 'top'; ctx.font = '17px ui-monospace, monospace';
+  const rows = [...history];
+  if(accepting) rows.push({ t: PROMPT + input + (cursorOn?'█':' '), c:C.cyan });
+  rows.slice(-MAX_ROWS).forEach((r,i)=>{ ctx.fillStyle=r.c; ctx.fillText(r.t, PAD_X, PAD_TOP+i*LH); });
+  // scanlines + glow border
+  ctx.fillStyle='rgba(0,0,0,0.10)'; for(let y=34;y<560;y+=3) ctx.fillRect(0,y,860,1);
+  ctx.strokeStyle='rgba(77,227,255,0.5)'; ctx.lineWidth=3; ctx.strokeRect(2,2,856,556);
+  scrTex.needsUpdate = true;
+}
+
+// ---- home-lab content ----
+const NEO = [
+  '        ___________            henry@home.lab',
+  '       /  ._______. \\          ------------------------',
+  '      |  |  o o    | |         host   Minisforum UM890 Pro',
+  '      |  |_________| |         cpu    Ryzen 9 8945HS  8c/16t',
+  '      |   UM890 PRO  |         mem    32 GB',
+  '       \\____________/          os     Win11 · WSL2 Ubuntu',
+  '        [==========]           up     24/7 since May 2026',
+  '                               net    Tailscale · 0 open ports',
+];
+const SERVICES = [
+  ['hermes-agent',    'running', 'Nous Research framework, bare-metal in WSL2'],
+  ['fastapi-trading', 'running', 'self-hosted trading server'],
+  ['daily-news',      'running', 'static daily-news page'],
+  ['tailscale',       'up',      'mesh VPN · zero open ports · portproxy -> WSL'],
+];
+const CMDS = {
+  help(){ print('commands:', C.amber);
+    [['neofetch','the box, at a glance'],['services','what\'s running 24/7'],
+     ['hermes','the self-hosted agent'],['uptime','how long it\'s been up'],
+     ['whoami','who runs this'],['clear','wipe the screen']]
+    .forEach(([c,d])=>print('  '+c.padEnd(11)+d, C.dim)); },
+  neofetch(){ NEO.forEach(l=>print(l, l.includes('henry@')||l.includes('---')?C.amber:C.cyan)); },
+  services(){ print('services // '+SERVICES.length+' running', C.amber);
+    SERVICES.forEach(([n,s,d])=>{ print('  ● '+n.padEnd(16)+s.padEnd(9), C.ok);
+      print('    '+d, C.dim); }); },
+  hermes(){ print('┌─ hermes — my self-hosted agent', C.amber);
+    ['Nous Research open-source framework, bare-metal in WSL2.',
+     'reachable via Telegram + WhatsApp gateways.',
+     'layered memory: SOUL.md / MEMORY.md / skills — 73 loaded.',
+     'running since May 2026.',
+     'honest lesson: the local models were the weak point.']
+    .forEach(l=>print('  '+l, C.white)); print('└─', C.amber); },
+  uptime(){ print('up since May 2026 · still humming in the living room.', C.white); },
+  whoami(){ print('Henry Lee — Backend Team Lead by day,', C.white);
+    print('home-lab tinkerer by night. This box is the night shift.', C.dim); },
+  clear(){ history = []; },
+};
+function run(raw){ const line = raw.trim(); print(PROMPT + line, C.cyan);
+  if(!line) return; const [cmd,...r] = line.split(/\s+/);
+  const fn = CMDS[cmd]; if(fn) fn(r.join(' '));
+  else { print('command not found: '+cmd, C.amber); print('type: help', C.dim); } }
+
+// ---- boot ----
+const BOOT = [
+  { t:'UM890 PRO — power on', c:C.dim },
+  { t:'WSL2 Ubuntu ... ok', c:C.dim },
+  { t:'[ OK ] hermes-agent      up', c:C.ok },
+  { t:'[ OK ] fastapi-trading   up', c:C.ok },
+  { t:'[ OK ] tailscale mesh    0 open ports', c:C.ok },
+  { t:'', c:C.cyan },
+  { t:"you're inside henry.home — the home lab.", c:C.amber },
+  { t:'type  help  to look around.', c:C.amber },
+  { t:'', c:C.cyan },
+];
+function boot(){
+  if(booted) return; booted = true;
+  document.getElementById('hint').classList.add('gone');
+  powerMat.emissiveIntensity = 1.8; mesh.visible = true;
+  let i = 0;
+  const timer = setInterval(()=>{
+    history.push(BOOT[i]); i++;
+    if(i >= BOOT.length){ clearInterval(timer); accepting = true; }
+  }, 230);
+}
+
+// ---- input ----
+addEventListener('keydown', e=>{
+  if(!booted){ boot(); return; }
+  if(!accepting) return;
+  if(e.key==='Enter'){ run(input); input=''; e.preventDefault(); }
+  else if(e.key==='Backspace'){ input=input.slice(0,-1); e.preventDefault(); }
+  else if(e.key.length===1 && !e.metaKey && !e.ctrlKey){ input+=e.key; e.preventDefault(); }
+});
+let downXY=null;
+renderer.domElement.addEventListener('pointerdown', e=>downXY=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup', e=>{
+  const moved = downXY?Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1]):99;
+  downXY=null; if(moved<6 && !booted) boot();
+});
+setTimeout(()=>document.getElementById('hint').classList.add('show'), 1300);
+
+// ============================================================ render loop
+let intro = 0, glow = 0;
+function tick(){
+  requestAnimationFrame(tick);
+  const now = performance.now();
+
+  if(intro < 1){ intro = Math.min(1, intro+0.008);
+    const e = 1-Math.pow(1-intro,3);
+    camera.position.lerpVectors(new THREE.Vector3(7,5,9), CAM_TO, e);
+    camera.lookAt(0,1.1,0); if(intro>=1) controls.enabled = true;
+  } else controls.update();
+
+  // idle power pulse / boot glow
+  power.material.emissiveIntensity = booted ? 1.8 : 0.4 + Math.sin(now*0.004)*0.25;
+  leds.forEach((m,i)=> m.emissiveIntensity = 0.4 + Math.abs(Math.sin(now*0.006 + i))*0.9);
+  if(booted){ glow = Math.min(1, glow+0.02); }
+  under.intensity = glow*1.2;
+  panel.material.opacity = glow*0.96;
+  beamMat.opacity = glow*0.10;
+  holo.position.y = Math.sin(now*0.001)*0.03;          // gentle float
+  panel.rotation.z = Math.sin(now*0.0008)*0.006;        // holo sway
+
+  // particles rise
+  const pa = particles.geometry.attributes.position;
+  for(let i=0;i<PN;i++){ let y=pa.getY(i)+pspd[i]; if(y>6) y=0; pa.setY(i,y); }
+  pa.needsUpdate = true;
+
+  // mesh pulses travel toward the box
+  if(mesh.visible) pulses.forEach(p=>{ const u=p.userData; u.t+=u.spd; if(u.t>1)u.t=0;
+    p.position.lerpVectors(u.from, u.to, u.t); });
+  mesh.rotation.y += 0.0009;
+
+  if(intro>=1 || true) drawScreen();
+  renderer.render(scene, camera);
+}
+tick();
+
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+</script>
+</body>
+</html>
