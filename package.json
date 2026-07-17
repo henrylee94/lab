@@ -1,0 +1,27 @@
+{
+  "name": "henry-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Henry Lee's Lab — interactive showcases: boot a 3D home lab, run a live scalping desk.",
+  "homepage": "https://henrylee94.github.io/lab/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/henrylee94/lab.git"
+  },
+  "author": "Henry Lee (https://github.com/henrylee94)",
+  "license": "MIT",
+  "scripts": {
+    "start": "npx --yes serve .",
+    "dev": "npx --yes serve ."
+  },
+  "keywords": [
+    "portfolio",
+    "three.js",
+    "webgl",
+    "canvas",
+    "interactive",
+    "terminal",
+    "github-pages",
+    "static-site"
+  ]
+}

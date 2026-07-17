@@ -1,35 +1,87 @@
-# Henry Lee — The Lab (Portfolio V2)
+# Henry Lee — The Lab
 
-Personal project (github.com/henrylee94). A gallery of interactive showcases —
-the "experience weapon" that complements the main portfolio (V1). Pure static:
-no backend, no build step, no server. Content reused from V1, zero rewrite.
+[![Live](https://img.shields.io/badge/live-henrylee94.github.io%2Flab-4de3ff?style=flat)](https://henrylee94.github.io/lab/)
+[![Made with Three.js](https://img.shields.io/badge/three.js-r161-000?style=flat&logo=three.js)](https://threejs.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f0a63c?style=flat)](LICENSE)
+![No build step](https://img.shields.io/badge/build-none%20(static)-26d07c?style=flat)
 
-The Lab is the impact-first front door (V2). The scannable, recruiter-friendly
-content lives on the main portfolio (V1, `../portfolio-website/`). Two doors.
+> Interactive things I build when nobody's paying me to.
 
-## Pages
-- `index.html` — **henry.home** (the landing): boot a 3D UM890 mini-PC (Three.js
-  + bloom); it projects a holographic terminal you can type in
-  (`help ls cat ps top ping hermes rules ai showcases open …`). It's both the
-  home-lab showcase and the Lab's hub — `showcases` / `open scalp` navigate;
-  `the portfolio ↗` goes to V1.
-- `lab.html` — visual grid of all showcases (fallback for non-typers / mobile)
-- `showcase-scalp.html` — **scalp-analyzer**: a live scalping desk on 2D canvas —
-  animated candles, EMA/VWAP/RSI, a confluence checklist and a 0–10 safety
-  score. Type `check NVDA` for the entry/target/stop card.
+**The Lab** is the experience side of my portfolio — the companion to the main,
+scannable site at **[henrylee94.github.io/portfolio](https://henrylee94.github.io/portfolio/)**.
+Boot a 3D home lab, poke around a live terminal, run a live scalping desk. Every
+piece is real, self-contained, and runs entirely in your browser.
+
+**▶ Live: https://henrylee94.github.io/lab/**
+
+---
+
+## What's inside
+
+| Showcase | What it is | Tech |
+|---|---|---|
+| **henry.home** (`index.html`) | Boot a 3D UM890 mini-PC — it projects a holographic terminal you can actually type in (`help`, `memory`, `mnemosyne`, `backtest`, `gaps`, `rules`, `ai`, …). It surfaces my real home lab: a self-hosted agent, a six-layer memory stack, a tiered model router. | Three.js + UnrealBloom, CanvasTexture terminal, Web Audio |
+| **scalp-analyzer** (`showcase-scalp.html`) | A live US-stock scalping desk: animated candles, EMA / VWAP / RSI, a confluence checklist and a 0–10 safety score. Type `check NVDA` for the entry / target / stop card. | 2D Canvas, custom indicators |
+| **the grid** (`lab.html`) | A visual gallery of every showcase — the fallback for non-typers and mobile. | Canvas thumbnails |
+
+## Highlights
+
+- **Zero backend, zero build.** Pure static HTML/CSS/JS. Deploys to any static host.
+- **Real content, honestly told.** The home lab data (73 skills, 3,474 memories,
+  the "local models lost" postmortem, the known-gaps list) is real — no filler.
+- **Works for everyone.** Tappable command chips for mobile / non-typers; keyboard
+  power-users get Tab-completion and command history.
+- **Reduced-motion & CDN-failure aware.** Degrades gracefully.
+
+## Tech stack
+
+- **3D:** [Three.js](https://threejs.org) r161 + EffectComposer / UnrealBloomPass
+- **2D:** Canvas 2D (candles, indicators, live thumbnails)
+- **Audio:** Web Audio API (synthesized boot chime, no assets)
+- **Hosting:** GitHub Pages (static)
+- Libraries loaded from jsDelivr CDN — no bundler, no `node_modules`.
+
+## Project structure
+
+```
+.
+├── index.html            # henry.home — the 3D boot + terminal (the landing)
+├── showcase-scalp.html   # scalp-analyzer — the live trading desk
+├── lab.html              # the visual grid of showcases
+├── README.md
+├── CHANGELOG.md
+├── SKILL.md              # project guide for AI coding agents
+├── AGENTS.md             # → points agents at SKILL.md
+├── package.json
+├── LICENSE
+└── .nojekyll             # tell GitHub Pages to serve files as-is
+```
 
 ## Run locally
-Just open `index.html` in a browser (needs internet — Three.js/fonts via CDN).
 
-## Deploy (all static, free)
-- **GitHub Pages**: push to `github.com/henrylee94/<repo>`, Settings → Pages →
-  deploy from branch. `index.html` is the entry.
-- **Netlify / Vercel**: drag-and-drop this folder, or connect the repo. No build
-  command, publish directory = repo root.
+No build required — just serve the folder over HTTP (needed for ES modules):
 
-## Not yet wired
-- Reverse link from V1 (`portfolio-website/lab.html` → this gallery). Held until
-  both are deployed so the live link can't 404. Insertion point in V1's
-  `#ai-home-server` card is ready (`demo-links` + `btn btn-ghost`).
-- `stock-sentry` showcase — pending desensitization (leaked private files in the
-  old public repo must be cleaned first).
+```bash
+npx serve .
+# or
+python3 -m http.server 8000
+```
+
+Then open the printed URL. (Opening `index.html` via `file://` won't work — ES
+module imports need `http://`.)
+
+## Deploy
+
+Any static host. This repo ships on **GitHub Pages** (`main` branch, root).
+`.nojekyll` keeps Pages from touching the files. Netlify / Vercel / Cloudflare
+Pages all work with **no build command** and publish directory = repo root.
+
+## Credits
+
+Built by **Henry Lee** — Backend Team Lead. Content mirrored from the main
+portfolio, zero rewrite. Co-developed with Claude Code.
+
+## License
+
+[MIT](LICENSE) © 2026 Henry Lee — code is free to learn from; the personal
+content and branding are mine.
