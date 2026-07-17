@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>scalp-analyzer — a live scalping desk</title>
+<meta name="description" content="A live US-stock scalping desk: candles, EMA/VWAP/RSI, a confluence checklist and a 0–10 safety score. Part of Henry Lee's Lab." />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#07090d" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="scalp-analyzer — a live scalping desk" />
+<meta property="og:description" content="Candles, EMA/VWAP/RSI, a confluence checklist and a 0–10 safety score. Type check NVDA for the card." />
+<meta property="og:url" content="https://henrylee94.github.io/lab/showcase-scalp.html" />
+<meta name="twitter:card" content="summary" />
 <style>
   :root { --bg:#07090d; --grid:#141922; --up:#26d07c; --down:#ff5c6c;
     --cyan:#4de3ff; --amber:#f0a63c; --fg:#cfe0ea; --dim:#5f6b78; }
@@ -46,7 +54,8 @@
 
 <script>
 const cv = document.getElementById('c'), x = cv.getContext('2d');
-let W, H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; } resize(); addEventListener('resize', resize);
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;  // freeze the tape if set
+let W, H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; if(REDUCED && window.__scalpReady) draw(); } resize(); addEventListener('resize', resize);
 
 // ---------- deterministic-ish seed per ticker so "check NVDA" is stable-flavored ----------
 function hash(s){ let h=2166136261; for(const ch of s){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0); }
@@ -60,6 +69,7 @@ function seed(sym){
   for(let i=0;i<70;i++){ const o=p; p=step(p); const c=p;
     candles.push(mkCandle(o,c)); }
   forming=mkCandle(p, p); session=(h%360)/360;
+  if(REDUCED) draw();   // static snapshot instead of a live tape
 }
 function step(p){ const drift=Math.sin(tick*0.03)*0.04; return Math.max(1, p*(1+ (Math.random()-0.5)*0.006 + drift*0.002)); }
 function mkCandle(o,c){ const spread=Math.abs(o-c)+o*0.002*(0.5+Math.random());
@@ -216,7 +226,8 @@ function loop(ts){ requestAnimationFrame(loop);
     forming=mkCandle(price, price); session=(session+0.01)%1; }
   draw();
 }
-seed('NVDA'); requestAnimationFrame(loop);
+seed('NVDA'); window.__scalpReady = true;
+if(!REDUCED) requestAnimationFrame(loop);   // reduced-motion: static snapshot, no live loop
 
 // ---------- command input ----------
 const sIntro=document.getElementById('sIntro');

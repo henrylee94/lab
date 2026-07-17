@@ -48,12 +48,15 @@ piece is real, self-contained, and runs entirely in your browser.
 ├── index.html            # henry.home — the 3D boot + terminal (the landing)
 ├── showcase-scalp.html   # scalp-analyzer — the live trading desk
 ├── lab.html              # the visual grid of showcases
-├── README.md
-├── CHANGELOG.md
-├── SKILL.md              # project guide for AI coding agents
-├── AGENTS.md             # → points agents at SKILL.md
-├── package.json
-├── LICENSE
+├── 404.html              # custom GitHub Pages 404
+├── favicon.svg
+├── robots.txt · sitemap.xml
+├── scripts/check.mjs     # inline-script syntax + local-link checker (CI runs it)
+├── .github/              # CI workflow, issue + PR templates
+├── README.md · CHANGELOG.md · LICENSE
+├── SKILL.md · AGENTS.md  # project guides for AI coding agents
+├── CONTRIBUTING.md · CODE_OF_CONDUCT.md · SECURITY.md
+├── .editorconfig · package.json
 └── .nojekyll             # tell GitHub Pages to serve files as-is
 ```
 
