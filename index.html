@@ -51,7 +51,7 @@
 </head>
 <body>
   <div class="tag"><b>henry.home</b> · the lab · running 24/7</div>
-  <a class="back" href="../portfolio-website/index.html">the portfolio ↗</a>
+  <a class="back" href="https://henrylee94.github.io/portfolio/">the portfolio ↗</a>
   <button class="snd" id="snd" aria-label="toggle boot sound" title="toggle boot sound">♪</button>
   <div id="intro">
     <div class="i-name">HENRY&nbsp;LEE</div>
@@ -455,7 +455,7 @@ const CMDS = {
     print('  menu         the visual grid of everything', C.dim);
     print('  the portfolio (my day job & case studies) → open portfolio', C.dim); },
   open(a){ const map={ scalp:'showcase-scalp.html', menu:'lab.html',
-      lab:'lab.html', portfolio:'../portfolio-website/index.html' };
+      lab:'lab.html', portfolio:'https://henrylee94.github.io/portfolio/' };
     const u=map[(a||'').toLowerCase()];
     if(!u){ print('open what? try: showcases', C.dim); return; }
     print('opening '+a+' …', C.ok); setTimeout(()=>{ location.href=u; }, 450); },
