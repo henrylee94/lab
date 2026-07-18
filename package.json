@@ -1,6 +1,6 @@
 {
   "name": "henry-lab",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Henry Lee's Lab — interactive showcases: boot a 3D home lab, run a live scalping desk.",
   "homepage": "https://henrylee94.github.io/lab/",
