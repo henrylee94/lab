@@ -12,7 +12,8 @@ for (const f of htmlFiles) {
 
   // inline scripts (exclude importmap and external-src scripts)
   const re = /<script(?![^>]*\bsrc=)(?![^>]*type="importmap")[^>]*>([\s\S]*?)<\/script>/g;
-  let m, i = 0;
+  let m,
+    i = 0;
   while ((m = re.exec(html))) {
     const code = m[1];
     if (!code.trim()) continue;
@@ -22,7 +23,12 @@ for (const f of htmlFiles) {
       execSync(`node --check "${tmp}"`, { stdio: 'pipe' });
     } catch (e) {
       console.error(`✗ JS syntax error in ${f} (script block ${i})`);
-      console.error(String(e.stderr || e).split('\n').slice(0, 4).join('\n'));
+      console.error(
+        String(e.stderr || e)
+          .split('\n')
+          .slice(0, 4)
+          .join('\n'),
+      );
       errors++;
     }
     i++;

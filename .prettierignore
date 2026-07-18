@@ -1,0 +1,8 @@
+# Hand-formatted — reformatting would create huge diffs
+*.html
+
+# Out of format scope (format scope = scripts/*.mjs, *.md, *.json)
+assets/
+*.yml
+*.xml
+*.txt

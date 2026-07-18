@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Something looks or behaves wrong
-title: "[bug] "
+title: '[bug] '
 labels: bug
 ---
 
@@ -9,6 +9,7 @@ labels: bug
 <!-- A clear description of the problem. -->
 
 **Where**
+
 - Showcase: <!-- henry.home / scalp-analyzer / the grid -->
 - Browser & OS:
 - Device: <!-- desktop / mobile -->

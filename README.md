@@ -3,7 +3,7 @@
 [![Live](https://img.shields.io/badge/live-henrylee94.github.io%2Flab-4de3ff?style=flat)](https://henrylee94.github.io/lab/)
 [![Made with Three.js](https://img.shields.io/badge/three.js-r161-000?style=flat&logo=three.js)](https://threejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f0a63c?style=flat)](LICENSE)
-![No build step](https://img.shields.io/badge/build-none%20(static)-26d07c?style=flat)
+![No build step](<https://img.shields.io/badge/build-none%20(static)-26d07c?style=flat>)
 
 > Interactive things I build when nobody's paying me to.
 
@@ -18,11 +18,11 @@ piece is real, self-contained, and runs entirely in your browser.
 
 ## What's inside
 
-| Showcase | What it is | Tech |
-|---|---|---|
-| **henry.home** (`index.html`) | Boot a 3D UM890 mini-PC — it projects a holographic terminal you can actually type in (`help`, `memory`, `mnemosyne`, `backtest`, `gaps`, `rules`, `ai`, …). It surfaces my real home lab: a self-hosted agent, a six-layer memory stack, a tiered model router. | Three.js + UnrealBloom, CanvasTexture terminal, Web Audio |
-| **scalp-analyzer** (`showcase-scalp.html`) | A live US-stock scalping desk: animated candles, EMA / VWAP / RSI, a confluence checklist and a 0–10 safety score. Type `check NVDA` for the entry / target / stop card. | 2D Canvas, custom indicators |
-| **the grid** (`lab.html`) | A visual gallery of every showcase — the fallback for non-typers and mobile. | Canvas thumbnails |
+| Showcase                                   | What it is                                                                                                                                                                                                                                                       | Tech                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **henry.home** (`index.html`)              | Boot a 3D UM890 mini-PC — it projects a holographic terminal you can actually type in (`help`, `memory`, `mnemosyne`, `backtest`, `gaps`, `rules`, `ai`, …). It surfaces my real home lab: a self-hosted agent, a six-layer memory stack, a tiered model router. | Three.js + UnrealBloom, CanvasTexture terminal, Web Audio |
+| **scalp-analyzer** (`showcase-scalp.html`) | A live US-stock scalping desk: animated candles, EMA / VWAP / RSI, a confluence checklist and a 0–10 safety score. Type `check NVDA` for the entry / target / stop card.                                                                                         | 2D Canvas, custom indicators                              |
+| **the grid** (`lab.html`)                  | A visual gallery of every showcase — the fallback for non-typers and mobile.                                                                                                                                                                                     | Canvas thumbnails                                         |
 
 ## Highlights
 

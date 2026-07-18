@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Standards, accessibility, and repo-hygiene pass.
 
 ### Added
+
 - **SEO / social:** per-page `<meta name="description">`, Open Graph + Twitter card
   tags, `favicon.svg`, `theme-color`, `robots.txt`, `sitemap.xml`.
 - **Custom `404.html`** for GitHub Pages (terminal-themed).
@@ -20,6 +21,7 @@ Standards, accessibility, and repo-hygiene pass.
   issue + pull-request templates, `.editorconfig`.
 
 ### Fixed
+
 - **Accessibility — `prefers-reduced-motion`:** the 3D scene now skips the camera
   dolly, ambient particles, mesh rotation, and holo drift; the scalp desk renders a
   static snapshot instead of a live tape. (Previously ignored — docs had over-claimed
@@ -33,6 +35,7 @@ Standards, accessibility, and repo-hygiene pass.
 First public release. The Lab goes live at https://henrylee94.github.io/lab/.
 
 ### Added
+
 - **henry.home** — a 3D UM890 mini-PC (Three.js) that boots on click/keypress and
   projects a holographic terminal.
   - Cinematic dolly-in intro, UnrealBloom glow, labeled Tailscale mesh with data
@@ -54,6 +57,7 @@ First public release. The Lab goes live at https://henrylee94.github.io/lab/.
   `SKILL.md` / `AGENTS.md`, `.nojekyll`.
 
 ### Notes
+
 - All content honors an internal do-not-publish list — no real names, employers,
   IPs, phone numbers, or trading positions appear anywhere.
 
