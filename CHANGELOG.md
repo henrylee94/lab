@@ -4,7 +4,15 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> **Version sync rule:** `package.json` is the single source of truth for the
+> version. The visible in-site badge reads `js/version.js` — bump both (plus the
+> "What's new" list on `lab.html`) in the same commit as the release.
+
 ## [Unreleased]
+
+## [1.2.0] — 2026-07-19
+
+Three new interactive showcases, a richer grid page, and visible versioning.
 
 ### Added
 
@@ -21,6 +29,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rate-limited or offline. Zero backend.
 - Three new cards with animated canvas mini-thumbnails on `lab.html`; terminal
   `showcases` / `open` entries on `index.html`; `sitemap.xml` entries.
+- **Grid enrichment on `lab.html`** — three new sections: _Under the hood_ (how
+  the site is built: hand-rolled terminal engine, Three.js + bloom, one file per
+  page, CI guard), a _try the terminal_ teaser card, and a _from the workbench_
+  link row (ai-native-sdlc, portfolio, this repo's source).
+- **Visible versioning** — a muted `v1.2.0` badge in the `lab.html` footer and the
+  `index.html` corner tag, both reading one source: `js/version.js`
+  (`window.LAB_VERSION`). New `version` and `changelog` terminal commands on
+  `index.html`, and a compact **"What's new"** section on `lab.html` listing the
+  latest releases with links to each showcase.
+- **Tooling:** Prettier config + `format` / `format:check` / `lint-check` scripts,
+  and a `lint-check` job in CI alongside the existing link/syntax check.
+
+### Changed
+
+- Landing copy on `lab.html` reframed to foreground engineering discipline.
+- **Repo structure standardized** — `favicon.svg` moved to `assets/`, community
+  health files consolidated under `.github/`, plus repo hygiene: Dependabot,
+  `CODEOWNERS`, `.gitattributes`.
+
+### Fixed
+
+- **Accessibility — `prefers-reduced-motion` on `lab.html`:** the ambient particle
+  background and the card mini-thumbnails now render a single static frame instead
+  of animating; hover transforms and smooth scrolling are disabled.
 
 ## [1.1.0] — 2026-07-17
 
@@ -77,6 +109,7 @@ First public release. The Lab goes live at https://henrylee94.github.io/lab/.
 - All content honors an internal do-not-publish list — no real names, employers,
   IPs, phone numbers, or trading positions appear anywhere.
 
-[Unreleased]: https://github.com/henrylee94/lab/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/henrylee94/lab/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/henrylee94/lab/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/henrylee94/lab/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/henrylee94/lab/releases/tag/v1.0.0

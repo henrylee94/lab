@@ -106,10 +106,29 @@
     .card:hover, .bench a:hover { transform:none; }
   }
 
+  .log { display:grid; gap:14px; max-width:720px; }
+  .log article { border:1px solid #18202b; border-radius:12px; background:#0a0e15; padding:16px 18px; }
+  .log .v { display:flex; align-items:baseline; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
+  .log .v b { font-family:ui-monospace,monospace; font-size:13px; color:var(--cyan);
+    border:1px solid #1c2e3a; border-radius:20px; padding:2px 10px; font-weight:400; }
+  .log .v time { font-family:ui-monospace,monospace; font-size:11px; color:var(--dim); }
+  .log .v .latest { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--amber); }
+  .log ul { list-style:none; }
+  .log li { color:var(--dim); font-size:.88rem; line-height:1.55; padding-left:16px; position:relative; }
+  .log li + li { margin-top:6px; }
+  .log li::before { content:'▸'; position:absolute; left:0; color:var(--amber); font-size:.75rem; }
+  .log li a { color:var(--fg); text-decoration:none; border-bottom:1px solid #2a3a4a; }
+  .log li a:hover { color:var(--cyan); border-bottom-color:var(--cyan); }
+  .log-more { margin-top:14px; font-family:ui-monospace,monospace; font-size:12.5px; }
+  .log-more a { color:var(--amber); text-decoration:none; }
+  .log-more a:hover { color:var(--cyan); }
+
   footer { margin-top:9vh; padding-top:28px; border-top:1px solid #141b24; color:var(--dim);
     font-size:13px; display:flex; flex-wrap:wrap; gap:18px; align-items:center; justify-content:space-between; }
   footer a { color:var(--dim); text-decoration:none; } footer a:hover { color:var(--cyan); }
   footer .links a { margin-left:16px; }
+  footer #ver { font-family:ui-monospace,monospace; font-size:11.5px; color:var(--dim); opacity:.8; }
 </style>
 </head>
 <body>
@@ -258,16 +277,53 @@
       </div>
     </section>
 
+    <section class="section" aria-labelledby="new-title">
+      <div class="sec-label">what's new</div>
+      <h2 class="sec-title" id="new-title">The lab, <span class="serif">versioned.</span></h2>
+      <div class="log">
+        <article>
+          <div class="v"><b id="ver-badge">v1.2.0</b><time datetime="2026-07-19">2026-07-19</time><span class="latest">latest</span></div>
+          <ul>
+            <li><a href="showcase-idempotency.html">Retry Storm</a> — an idempotency playground: mash retry, flip the guard on, watch the ledger stay clean.</li>
+            <li><a href="showcase-router.html">Dispatch Floor</a> — a weighted-scoring queue router, live: status ▸ free slots ▸ waited-longest.</li>
+            <li><a href="showcase-github.html">Live from GitHub</a> — live repo cards straight from the API, zero backend.</li>
+            <li>This grid grew an <a href="#hood-title">under-the-hood</a> section, a terminal teaser, a workbench row — and visible versioning (try <code>version</code> in the terminal).</li>
+          </ul>
+        </article>
+        <article>
+          <div class="v"><b>v1.1.0</b><time datetime="2026-07-17">2026-07-17</time></div>
+          <ul>
+            <li>Reduced motion honored across the site; graceful fallback when the 3D library can't load.</li>
+            <li>SEO &amp; social meta, a terminal-themed 404, and CI checks on every PR.</li>
+          </ul>
+        </article>
+        <article>
+          <div class="v"><b>v1.0.0</b><time datetime="2026-07-17">2026-07-17</time></div>
+          <ul>
+            <li><a href="index.html">Boot henry.home</a> — a 3D mini-PC that powers on into a real, typeable terminal.</li>
+            <li><a href="showcase-scalp.html">scalp-analyzer</a> — a live scalping desk with a confluence checklist and safety score.</li>
+          </ul>
+        </article>
+      </div>
+      <p class="log-more"><a href="https://github.com/henrylee94/lab/blob/main/CHANGELOG.md" target="_blank" rel="noopener">full changelog on GitHub →</a></p>
+    </section>
+
     <footer>
       <a href="https://henrylee94.github.io/portfolio/">← back to the main portfolio</a>
       <span class="links">
+        <span id="ver"></span>
         <a href="https://github.com/henrylee94" target="_blank" rel="noopener">github</a>
         <a href="https://www.linkedin.com/in/henry-lee-985300158" target="_blank" rel="noopener">linkedin</a>
       </span>
     </footer>
   </div>
 
+<script src="js/version.js"></script>
 <script>
+// version badge — single source: js/version.js (kept in sync with package.json)
+document.getElementById('ver').textContent = 'v' + window.LAB_VERSION;
+document.getElementById('ver-badge').textContent = 'v' + window.LAB_VERSION;
+
 // accessibility: under prefers-reduced-motion, draw one static frame instead of looping
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 

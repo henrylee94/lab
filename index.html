@@ -58,7 +58,7 @@
 </style>
 </head>
 <body>
-  <div class="tag"><b>henry.home</b> · the lab · running 24/7</div>
+  <div class="tag"><b>henry.home</b> · the lab · running 24/7<span id="ver"></span></div>
   <a class="back" href="https://henrylee94.github.io/portfolio/">the portfolio ↗</a>
   <button class="snd" id="snd" aria-label="toggle boot sound" title="toggle boot sound">♪</button>
   <div id="intro">
@@ -84,6 +84,11 @@
     padding:24px">This showcase needs JavaScript —
     <a href="https://henrylee94.github.io/portfolio/" style="color:#f0a63c">&nbsp;see the portfolio ↗</a></div></noscript>
 
+<script src="js/version.js"></script>
+<script>
+// version badge — single source: js/version.js (kept in sync with package.json)
+document.getElementById('ver').textContent = ' · v' + window.LAB_VERSION;
+</script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
@@ -334,7 +339,7 @@ const CMDS = {
      ['trading','backtest   (live: open scalp)'],
      ['files  ','ls  cat <file>'],
      ['me     ','rules  ai  whoami  uptime  timeline  contact'],
-     ['explore','showcases  open <name>  menu  clear']]
+     ['explore','showcases  open <name>  version  changelog  menu  clear']]
     .forEach(([g,c])=>{ print('  '+g+' │ '+c, C.cyan); });
     print('  hint: Tab completes · ↑/↓ history', C.dim); },
   rules(){ print('the rules my agents live by — same at work, same at home:', C.amber);
@@ -491,6 +496,16 @@ const CMDS = {
     if(!u){ print('open what? try: showcases', C.dim); return; }
     print('opening '+a+' …', C.ok); setTimeout(()=>{ location.href=u; }, 450); },
   menu(){ print('opening the visual grid …', C.ok); setTimeout(()=>{ location.href='lab.html'; }, 450); },
+  version(){ print('henry.lab v' + window.LAB_VERSION, C.cyan);
+    print('  source of truth: package.json · what shipped: changelog', C.dim); },
+  changelog(){ print('v' + window.LAB_VERSION + ' — what\'s new:', C.amber);
+    ['· Retry Storm — an idempotency playground     → open idempotency',
+     '· Dispatch Floor — a live queue-routing sim   → open router',
+     '· Live from GitHub — repos, zero backend      → open github',
+     '· richer grid page: under-the-hood, terminal teaser, workbench',
+     '· visible versioning — this command, the badge, a What\'s-new list']
+    .forEach(l=>print('  '+l, C.white));
+    print('  full history →  github.com/henrylee94/lab/blob/main/CHANGELOG.md', C.dim); },
   clear(){ history = []; },
 };
 function run(raw){ const line = raw.trim(); print(PROMPT + line, C.cyan);
