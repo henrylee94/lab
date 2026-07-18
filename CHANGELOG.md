@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Retry Storm** (`showcase-idempotency.html`) — an interactive idempotency
+  playground: mash RETRY / enable chaos mode against a create→review→approve→execute
+  pipeline; with the workflow-ID-as-creation-key guard on, retries return the same
+  record and the ledger stays clean. Live integrity score and counters.
+- **Dispatch Floor** (`showcase-router.html`) — a live weighted-scoring queue-routing
+  sim: agents with status/load/idle time, players (incl. VIPs) arriving, one
+  sorted-set score picking the winner — status ▸ free slots ▸ waited-longest.
+  Add agents, cycle status by clicking, spawn waves.
+- **Live from GitHub** (`showcase-github.html`) — client-side fetch of the GitHub
+  API: live repo cards, language mix bar, latest pushes; graceful fallback when
+  rate-limited or offline. Zero backend.
+- Three new cards with animated canvas mini-thumbnails on `lab.html`; terminal
+  `showcases` / `open` entries on `index.html`; `sitemap.xml` entries.
+
 ## [1.1.0] — 2026-07-17
 
 Standards, accessibility, and repo-hygiene pass.
