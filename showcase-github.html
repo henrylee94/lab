@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live from GitHub — henrylee94, fetched in your browser</title>
+<meta name="description" content="Live repo cards, a language mix bar and latest pushes for henrylee94 — fetched straight from api.github.com in your browser, zero backend. Part of Henry Lee's Lab." />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#06070c" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Live from GitHub — henrylee94" />
+<meta property="og:description" content="Live repo cards and language mix, fetched client-side from the GitHub API. Zero backend." />
+<meta property="og:url" content="https://henrylee94.github.io/lab/showcase-github.html" />
+<meta name="twitter:card" content="summary" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#06070c; --fg:#e8eef2; --dim:#7d8894; --cyan:#4de3ff; --amber:#f0a63c; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--fg); font-family:"Space Grotesk",system-ui,sans-serif;
+    min-height:100vh; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  #bg { position:fixed; inset:0; z-index:0; }
+  .wrap { position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:7vh 6vw 6vh; }
+  .serif { font-family:"Instrument Serif",serif; font-style:italic; }
+  .mono { font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+
+  .top { display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  .eyebrow { font-family:ui-monospace,monospace; color:var(--amber); font-size:12px;
+    letter-spacing:.2em; text-transform:uppercase; }
+  .back { font-family:ui-monospace,monospace; font-size:12px; color:var(--dim); text-decoration:none; }
+  .back:hover { color:var(--cyan); }
+  h1 { font-size:clamp(2.2rem,6vw,4rem); line-height:1.05; letter-spacing:-.03em; margin:16px 0 12px; }
+  h1 .g { background:linear-gradient(100deg,var(--cyan),var(--amber)); -webkit-background-clip:text;
+    background-clip:text; color:transparent; }
+  .sub { color:var(--dim); font-size:clamp(.95rem,1.8vw,1.15rem); max-width:56ch; line-height:1.55; }
+  .sub code { font-family:ui-monospace,monospace; font-size:.85em; color:var(--fg);
+    background:#10161f; border-radius:4px; padding:1px 6px; }
+
+  .stats { display:flex; gap:26px; flex-wrap:wrap; margin-top:26px; font-family:ui-monospace,monospace; }
+  .stats div { font-size:12px; color:var(--dim); }
+  .stats b { display:block; font-size:1.7rem; color:var(--fg); font-weight:500; }
+  .stats b.hi { color:var(--cyan); }
+
+  .langbar { margin-top:26px; }
+  .langbar .track { display:flex; height:12px; border-radius:8px; overflow:hidden;
+    border:1px solid #18202b; background:#0a0e15; }
+  .langbar .track i { display:block; height:100%; }
+  .langbar .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:10px;
+    font-family:ui-monospace,monospace; font-size:11.5px; color:var(--dim); }
+  .legend s { text-decoration:none; display:inline-block; width:9px; height:9px; border-radius:50%;
+    margin-right:6px; vertical-align:-1px; }
+
+  .sec-label { font-family:ui-monospace,monospace; color:var(--amber); font-size:12px;
+    letter-spacing:.2em; text-transform:uppercase; margin-top:7vh; }
+  .sec-title { font-size:clamp(1.3rem,3vw,1.9rem); letter-spacing:-.02em; margin:10px 0 20px; }
+
+  .repos { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+  .repo { display:block; text-decoration:none; color:inherit; border:1px solid #18202b;
+    border-radius:12px; background:#0a0e15; padding:16px 18px;
+    transition:transform .35s cubic-bezier(.2,.7,.2,1), border-color .35s, box-shadow .35s; }
+  .repo:hover { transform:translateY(-4px); border-color:#2a3a4a;
+    box-shadow:0 16px 40px -18px rgba(77,227,255,.25); }
+  .repo h3 { font-size:1.05rem; letter-spacing:-.01em; color:var(--cyan); font-weight:500; }
+  .repo p { color:var(--dim); font-size:.86rem; line-height:1.5; margin:7px 0 12px; min-height:2.6em; }
+  .repo .meta { display:flex; gap:14px; font-family:ui-monospace,monospace; font-size:11.5px; color:var(--dim); }
+  .repo .meta s { text-decoration:none; display:inline-block; width:8px; height:8px; border-radius:50%;
+    margin-right:5px; vertical-align:-.5px; }
+  .repo .pushed { margin-left:auto; color:#4a5665; }
+
+  #state { font-family:ui-monospace,monospace; font-size:13px; color:var(--dim); margin-top:20px;
+    line-height:1.7; }
+  #state a { color:var(--amber); }
+  #state .cursor { display:inline-block; width:7px; height:13px; background:var(--cyan); vertical-align:-2px; }
+  @media (prefers-reduced-motion: no-preference) { #state .cursor { animation:blink 1.1s steps(1) infinite; } }
+  @keyframes blink { 50% { opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .repo { transition:none; } .repo:hover { transform:none; } }
+
+  footer { margin-top:8vh; padding-top:24px; border-top:1px solid #141b24; color:var(--dim);
+    font-size:13px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; }
+  footer a { color:var(--dim); text-decoration:none; } footer a:hover { color:var(--cyan); }
+</style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="wrap">
+    <div class="top">
+      <div class="eyebrow">Henry Lee · the lab · live data</div>
+      <a class="back" href="lab.html">← the lab</a>
+    </div>
+    <h1>Live from <span class="g serif">GitHub.</span></h1>
+    <p class="sub">This page has no backend and no cache — your browser is calling
+      <code>api.github.com/users/henrylee94</code> right now. What you see below is whatever
+      GitHub says this second.</p>
+
+    <div class="stats" id="stats" hidden>
+      <div><b class="hi" id="stRepos">–</b>public repos</div>
+      <div><b id="stFollowers">–</b>followers</div>
+      <div><b id="stStars">–</b>stars collected</div>
+      <div><b id="stSince">–</b>on github since</div>
+    </div>
+
+    <div class="langbar" id="langbar" hidden>
+      <div class="track" id="langTrack"></div>
+      <div class="legend" id="langLegend"></div>
+    </div>
+
+    <div id="state" class="mono">fetching api.github.com/users/henrylee94 … <span class="cursor"></span></div>
+
+    <div id="repoSec" hidden>
+      <div class="sec-label">latest pushes</div>
+      <h2 class="sec-title">What moved <span class="serif">most recently.</span></h2>
+      <div class="repos" id="repos"></div>
+    </div>
+
+    <footer>
+      <a href="lab.html">← back to the lab</a>
+      <span><a href="https://github.com/henrylee94" target="_blank" rel="noopener">github.com/henrylee94 ↗</a></span>
+    </footer>
+  </div>
+
+<script>
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ambient background — same drifting particles as the lab grid
+(function(){
+  const c=document.getElementById('bg'), x=c.getContext('2d'); let W,H,dots=[];
+  function rs(){ W=c.width=innerWidth; H=c.height=innerHeight;
+    dots=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,
+      r:Math.random()*1.6+.3,s:Math.random()*.3+.05})); }
+  rs(); addEventListener('resize',rs);
+  (function d(){ if(!REDUCED) requestAnimationFrame(d); x.clearRect(0,0,W,H);
+    dots.forEach(p=>{ p.y-=p.s; if(p.y<0)p.y=H; x.fillStyle='rgba(77,227,255,'+(p.r*.14)+')';
+      x.beginPath(); x.arc(p.x,p.y,p.r,0,7); x.fill(); }); })();
+})();
+
+// ---------- live GitHub fetch (client-side, zero backend) ----------
+const USER = 'henrylee94';
+const LANG_COLORS = { JavaScript:'#f0a63c', TypeScript:'#4d8de3', Python:'#4de3ff',
+  HTML:'#ff5c6c', CSS:'#b06cf0', Shell:'#26d07c', Go:'#4de3d0', Rust:'#e0906c',
+  Dockerfile:'#4d8de3', Makefile:'#7d8894' };
+const el = id => document.getElementById(id);
+
+function rel(iso){
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if(d < 3600) return Math.max(1,Math.floor(d/60)) + 'm ago';
+  if(d < 86400) return Math.floor(d/3600) + 'h ago';
+  if(d < 86400*30) return Math.floor(d/86400) + 'd ago';
+  return Math.floor(d/86400/30) + 'mo ago';
+}
+function esc(s){ const div = document.createElement('div'); div.textContent = s || ''; return div.innerHTML; }
+
+async function gh(path){
+  const r = await fetch('https://api.github.com' + path, {
+    headers: { Accept: 'application/vnd.github+json' } });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+function renderStats(user, repos){
+  el('stRepos').textContent = user.public_repos;
+  el('stFollowers').textContent = user.followers;
+  el('stStars').textContent = repos.reduce((s,r)=>s+r.stargazers_count, 0);
+  el('stSince').textContent = new Date(user.created_at).getFullYear();
+  el('stats').hidden = false;
+}
+
+function renderLangs(repos){
+  const mix = {};
+  repos.forEach(r=>{ if(r.language) mix[r.language] = (mix[r.language]||0) + 1; });
+  const entries = Object.entries(mix).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return;
+  const total = entries.reduce((s,e)=>s+e[1], 0);
+  el('langTrack').innerHTML = entries.map(([l,n])=>
+    '<i style="width:'+(n/total*100).toFixed(1)+'%;background:'+(LANG_COLORS[l]||'#4de3ff')+'"></i>').join('');
+  el('langLegend').innerHTML = entries.map(([l,n])=>
+    '<span><s style="background:'+(LANG_COLORS[l]||'#4de3ff')+'"></s>'+esc(l)+' · '+n+'</span>').join('');
+  el('langbar').hidden = false;
+}
+
+function renderRepos(repos){
+  const shown = repos.filter(r=>!r.fork).slice(0, 9);
+  el('repos').innerHTML = shown.map(r=>
+    "<a class='repo' href='"+r.html_url+"' target='_blank' rel='noopener'>"
+    + '<h3>'+esc(r.name)+'</h3>'
+    + '<p>'+esc(r.description || 'no description — the code speaks for itself.')+'</p>'
+    + '<div class="meta">'
+    + (r.language ? '<span><s style="background:'+(LANG_COLORS[r.language]||'#4de3ff')+'"></s>'+esc(r.language)+'</span>' : '')
+    + '<span>★ '+r.stargazers_count+'</span>'
+    + '<span class="pushed">pushed '+rel(r.pushed_at)+'</span>'
+    + '</div></a>').join('');
+  el('repoSec').hidden = false;
+}
+
+(async function(){
+  try {
+    const [user, repos] = await Promise.all([
+      gh('/users/' + USER),
+      gh('/users/' + USER + '/repos?per_page=100&sort=pushed'),
+    ]);
+    renderStats(user, repos);
+    renderLangs(repos);
+    renderRepos(repos);
+    el('state').innerHTML = '<span style="color:#26d07c">✓</span> live — fetched '
+      + repos.length + ' repos at ' + new Date().toLocaleTimeString()
+      + ' · rendered entirely in your browser';
+  } catch (e) {
+    el('state').innerHTML =
+      '<span style="color:#ff5c6c">✗</span> couldn\'t reach the GitHub API — probably '
+      + 'rate-limited (60 unauthenticated calls/hour per IP) or offline.<br />'
+      + 'the door still works: <a href="https://github.com/' + USER
+      + '" target="_blank" rel="noopener">github.com/' + USER + ' ↗</a>';
+  }
+})();
+window.__labReady = true;
+</script>
+</body>
+</html>

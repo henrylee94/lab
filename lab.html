@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Henry Lee — The Lab · interactive showcases</title>
-<meta name="description" content="Interactive things Henry builds when nobody's paying him to — boot a 3D home lab, run a live scalping desk." />
+<meta name="description" content="Interactive things Henry builds when nobody's paying him to — boot a 3D home lab, run a live scalping desk, survive a retry storm, route a dispatch floor." />
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#06070c" />
 <meta property="og:type" content="website" />
@@ -144,6 +144,39 @@
         </div>
       </a>
 
+      <a class="card" href="showcase-idempotency.html">
+        <div class="thumb"><canvas data-thumb="idem"></canvas></div>
+        <div class="body">
+          <div class="kind">interactive demo · canvas</div>
+          <h2>Retry Storm</h2>
+          <p>Mash <code>RETRY</code> against a transaction pipeline — duplicates pile up in red. Flip idempotency on and every retry returns the same record. A demo of the real design: workflow-ID as creation key.</p>
+          <div class="tags"><span>idempotency</span><span>chaos mode</span><span>ledger integrity</span></div>
+          <div class="go">▶ break it (try to) →</div>
+        </div>
+      </a>
+
+      <a class="card" href="showcase-router.html">
+        <div class="thumb"><canvas data-thumb="router"></canvas></div>
+        <div class="body">
+          <div class="kind">interactive demo · canvas</div>
+          <h2>Dispatch Floor</h2>
+          <p>A weighted-scoring queue router, live: agents with status and load, players arriving (VIPs jump the line), one sorted-set score picking the winner — status ▸ load ▸ waited-longest.</p>
+          <div class="tags"><span>zset scoring</span><span>live sim</span><span>chat routing</span></div>
+          <div class="go">▶ run the floor →</div>
+        </div>
+      </a>
+
+      <a class="card" href="showcase-github.html">
+        <div class="thumb"><canvas data-thumb="gh"></canvas></div>
+        <div class="body">
+          <div class="kind">live data · zero backend</div>
+          <h2>Live from GitHub</h2>
+          <p>Your browser calls <code>api.github.com</code> directly — live repo cards, a language mix bar, latest pushes. No server, no cache, graceful fallback if rate-limited.</p>
+          <div class="tags"><span>fetch API</span><span>live repos</span><span>no backend</span></div>
+          <div class="go">▶ see it live →</div>
+        </div>
+      </a>
+
       <div class="card soon">
         <div class="thumb"><canvas data-thumb="soon"></canvas></div>
         <div class="body">
@@ -274,6 +307,43 @@ document.querySelectorAll('canvas[data-thumb]').forEach(cv=>{
         const xx=i*cw+cw/2; x.fillRect(xx-cw*0.25, Math.min(o,cl), cw*0.5, Math.abs(o-cl)+2); }
       x.strokeStyle='rgba(240,166,60,0.6)'; x.beginPath();
       for(let i=0;i<n;i++){ const xx=i*cw, yy=H*0.5+Math.sin(i*0.5+t*0.02)*8; i?x.lineTo(xx,yy):x.moveTo(xx,yy);} x.stroke();
+    } else if(kind==='idem'){ // pipeline dot + ledger rows going red/green
+      const nodes=4, ny=H*0.42, x0=W*0.1, x1=W*0.62;
+      x.strokeStyle='#1a2230'; x.beginPath(); x.moveTo(x0,ny); x.lineTo(x1,ny); x.stroke();
+      for(let i=0;i<nodes;i++){ const nx=x0+(x1-x0)*i/(nodes-1);
+        x.fillStyle='#0b1017'; x.strokeStyle='rgba(77,227,255,0.5)';
+        x.beginPath(); x.arc(nx,ny,5,0,7); x.fill(); x.stroke(); }
+      const pt=(t*0.008)%1; x.fillStyle='#dff3fb'; x.beginPath();
+      x.arc(x0+(x1-x0)*pt, ny, 3, 0, 7); x.fill();
+      const guarded=Math.floor(t/240)%2===0;   // alternates: guarded vs duplicate storm
+      for(let i=0;i<5;i++){ const on=(pt*5>i);
+        x.fillStyle = guarded ? (i===0&&on?'#26d07c':'#141b24')
+          : (on?(i?'#ff5c6c':'#26d07c'):'#141b24');
+        x.fillRect(W*0.72, H*0.18+i*(H*0.13), W*0.2, H*0.09); }
+      x.fillStyle=guarded?'#26d07c':'#ff5c6c'; x.font='10px monospace';
+      x.fillText(guarded?'🛡 idempotent':'⚠ duplicates', W*0.1, H*0.8);
+    } else if(kind==='router'){ // queue dots flying to the best-scored agent box
+      const boxes=3, by=i=>H*0.12+i*(H*0.3);
+      const pick=Math.floor(t/130)%boxes;
+      for(let i=0;i<boxes;i++){ const yy=by(i);
+        x.strokeStyle=i===pick?'rgba(77,227,255,0.9)':'#1a2230';
+        x.strokeRect(W*0.5, yy, W*0.38, H*0.2);
+        x.fillStyle=['#26d07c','#f0a63c','#3a4450'][i]; x.beginPath();
+        x.arc(W*0.5+10, yy+H*0.1, 3, 0, 7); x.fill();
+        x.fillStyle='#1a2230'; x.fillRect(W*0.5+20, yy+H*0.08, W*0.3, 4);
+        x.fillStyle='#4de3ff'; x.fillRect(W*0.5+20, yy+H*0.08, W*0.3*((i+1)/4), 4); }
+      const pt=(t*0.012)%1, ty=by(pick)+H*0.1;
+      x.fillStyle='#f0a63c'; x.beginPath();
+      x.arc(W*0.12+(W*0.38-W*0.12)*pt, H*0.5+(ty-H*0.5)*pt, 2.5, 0, 7); x.fill();
+      for(let i=0;i<3;i++){ x.fillStyle='rgba(77,227,255,0.6)'; x.beginPath();
+        x.arc(W*0.09, H*0.34+i*H*0.16, 2.5, 0, 7); x.fill(); }
+    } else if(kind==='gh'){ // contribution-style grid pulsing
+      const cols=13, rows=5, s=Math.min(W/(cols+3), H/(rows+3));
+      const ox=(W-cols*s)/2, oy=(H-rows*s)/2;
+      for(let i=0;i<cols;i++) for(let j=0;j<rows;j++){
+        const v=(Math.sin(i*1.3+j*2.1+t*0.02)+1)/2;
+        x.fillStyle = v>0.72 ? '#26d07c' : v>0.45 ? 'rgba(38,208,124,0.35)' : '#10161f';
+        x.fillRect(ox+i*s, oy+j*s, s-2, s-2); }
     } else { x.fillStyle='#141b24'; x.font='12px monospace'; x.textAlign='center';
       x.fillText('◍ desensitizing…', W/2, H/2); x.textAlign='left'; }
   })();

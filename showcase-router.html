@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dispatch Floor — a weighted-scoring queue router</title>
+<meta name="description" content="Watch a weighted-scoring router assign arriving players to the right support agent in real time — status ▸ load ▸ waited-longest. Part of Henry Lee's Lab." />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#07090d" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Dispatch Floor — a weighted-scoring queue router" />
+<meta property="og:description" content="Agents, a queue, and one sorted-set score: status ▸ load ▸ waited-longest. An interactive demo of the real design." />
+<meta property="og:url" content="https://henrylee94.github.io/lab/showcase-router.html" />
+<meta name="twitter:card" content="summary" />
+<style>
+  :root { --bg:#07090d; --up:#26d07c; --down:#ff5c6c;
+    --cyan:#4de3ff; --amber:#f0a63c; --fg:#cfe0ea; --dim:#5f6b78; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  canvas { display:block; cursor:pointer; }
+  .tag { position:fixed; top:16px; left:20px; z-index:5; font-size:12px; color:var(--dim); }
+  .tag b { color:#dfeaf2; }
+  .back { position:fixed; top:16px; right:20px; z-index:5; font-size:12px; color:var(--dim); text-decoration:none; }
+  .back:hover { color:var(--cyan); }
+  .bar { position:fixed; bottom:0; left:0; right:0; z-index:5; min-height:56px;
+    background:rgba(10,14,20,.92); border-top:1px solid #1a2230; display:flex; align-items:center;
+    flex-wrap:wrap; gap:10px; padding:9px 20px; font-size:13px; }
+  .bar button { font-family:inherit; font-size:13px; cursor:pointer; border-radius:8px;
+    padding:8px 14px; color:var(--cyan); background:rgba(77,227,255,.06);
+    border:1px solid rgba(77,227,255,.3); transition:transform .12s, background .2s; }
+  .bar button:hover { background:rgba(77,227,255,.16); }
+  .bar button:active { transform:scale(.94); }
+  .bar button.vip { color:var(--amber); border-color:rgba(240,166,60,.4); background:rgba(240,166,60,.06); }
+  .bar button.vip:hover { background:rgba(240,166,60,.15); }
+  .toggle { color:var(--dim) !important; background:transparent !important; border:1px solid #1c2530 !important; }
+  .toggle.on { color:var(--up) !important; border-color:rgba(38,208,124,.5) !important;
+    background:rgba(38,208,124,.07) !important; }
+  .bar .note { margin-left:auto; color:var(--dim); font-size:11.5px; }
+  .s-intro { position:fixed; left:20px; bottom:76px; z-index:6; max-width:380px; color:var(--dim);
+    font-size:12.5px; line-height:1.5; transition:opacity .9s ease; }
+  .s-intro.gone { opacity:0; pointer-events:none; }
+  .s-intro b { color:var(--amber); }
+</style>
+</head>
+<body>
+  <div class="tag">V2 · Showcase — <b>Dispatch Floor</b> · interactive demo of the real design: one sorted-set score routes every chat</div>
+  <a class="back" href="lab.html">← the lab</a>
+  <canvas id="c"></canvas>
+  <div class="s-intro" id="sIntro">The live-chat routing I designed at work boils "who takes this
+    player?" down to <b>one comparable score per agent</b> — status first, then free capacity, then
+    who's been idle longest. Spawn players, click an agent to change status, watch the pick.</div>
+  <div class="bar">
+    <button id="spawn">+ player</button>
+    <button id="spawnVip" class="vip">★ VIP player</button>
+    <button id="wave">≋ wave ×8</button>
+    <button id="addAgent">+ agent</button>
+    <button id="auto" class="toggle">auto arrivals: off</button>
+    <span class="note">click an agent card to cycle status · online ▸ busy ▸ away</span>
+  </div>
+
+<script>
+const cv = document.getElementById('c'), x = cv.getContext('2d');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;   // static frame if set
+let W, H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; if(REDUCED) draw(); }
+addEventListener('resize', resize);
+
+// ---------- model ----------
+const NAMES = ['ana','bo','cy','dee','eli','fay','gus','hana','ivo','jax','kim','lux'];
+const STATUS = ['online','busy','away'];
+const SCOL = { online:'#26d07c', busy:'#f0a63c', away:'#3a4450' };
+const CAP = 3;
+let agents = [], queue = [], beams = [], pid = 0, tick = 0, auto = false;
+let served = 0, lastPick = null;
+
+function addAgent(status){
+  if(agents.length >= 8) return;
+  agents.push({ name: NAMES[agents.length], status: status || 'online',
+    chats: [], idleSince: tick, flash: 0 });
+}
+addAgent('online'); addAgent('online'); addAgent('busy'); addAgent('away');
+
+function spawnPlayer(vip){ queue.push({ id: ++pid, vip: !!vip, born: tick }); }
+
+// ---------- the score (the real design, in one line) ----------
+// status ▸ free slots ▸ idle-longest — packed into one number, zset-style
+function statusW(a){ return a.status === 'online' ? 2 : a.status === 'busy' ? 1 : 0; }
+function freeSlots(a){ return Math.max(0, CAP - a.chats.length); }
+function idleSec(a){ return Math.min(9999, Math.floor((tick - a.idleSince) / 60)); }
+function score(a){ return statusW(a)*1e8 + freeSlots(a)*1e4 + idleSec(a); }
+function eligible(a){ return a.status !== 'away' && freeSlots(a) > 0; }
+
+function dispatch(){
+  if(!queue.length) return;
+  const cands = agents.filter(eligible);
+  if(!cands.length) return;
+  // vip jumps the line; otherwise FIFO
+  queue.sort((p,q)=> (q.vip - p.vip) || (p.born - q.born));
+  const player = queue.shift();
+  const best = cands.reduce((a,b)=> score(b) > score(a) ? b : a);
+  lastPick = { agent: best.name, s: score(best), vip: player.vip, t: tick };
+  best.chats.push({ id: player.id, vip: player.vip, done: tick + 500 + Math.random()*700 });
+  best.idleSince = tick; best.flash = 1; served++;
+  beams.push({ to: agents.indexOf(best), t: 0, vip: player.vip });
+}
+
+// ---------- layout ----------
+function geometry(){
+  const qx = 26, qw = Math.min(190, W*0.18);
+  const fx = qx + qw + 40, fw = W - fx - 320;
+  const cols = agents.length <= 4 ? Math.min(agents.length, 2) : Math.ceil(agents.length/2)>=3?3:2;
+  const cw = Math.min(230, (fw - (cols-1)*16) / cols), ch = 108;
+  const rows = Math.ceil(agents.length / cols);
+  const top = Math.max(120, (H - 56 - rows*(ch+16)) / 2);
+  const pos = i => ({ ax: fx + (i%cols)*(cw+16), ay: top + Math.floor(i/cols)*(ch+16) });
+  return { qx, qw, fx, fw, cw, ch, pos, top, panelX: W - 292, pw: 268 };
+}
+
+// ---------- draw ----------
+function draw(){
+  const g = geometry();
+  x.fillStyle = '#07090d'; x.fillRect(0,0,W,H);
+
+  x.fillStyle = '#dfeaf2'; x.font='700 26px ui-monospace,monospace'; x.textAlign='left'; x.textBaseline='alphabetic';
+  x.fillText('DISPATCH FLOOR', 26, 66);
+  x.fillStyle = '#5f6b78'; x.font='13px ui-monospace,monospace';
+  x.fillText('served ' + served + ' · waiting ' + queue.length, 26, 90);
+
+  drawQueue(g);
+  drawAgents(g);
+  drawBeams(g);
+  drawFormula(g);
+}
+
+function drawQueue(g){
+  x.fillStyle='#0b1017'; x.strokeStyle='#1a2230';
+  const qh = H - 170 - 70;
+  x.fillRect(g.qx, 120, g.qw, qh); x.strokeRect(g.qx, 120, g.qw, qh);
+  x.fillStyle='#5f6b78'; x.font='11px ui-monospace,monospace';
+  x.fillText('QUEUE', g.qx+14, 142);
+  const shown = queue.slice(0, Math.floor((qh-50)/26));
+  shown.forEach((p,i)=>{
+    const yy = 168 + i*26;
+    x.fillStyle = p.vip ? '#f0a63c' : '#4de3ff';
+    x.beginPath(); x.arc(g.qx+22, yy-4, 5, 0, 7); x.fill();
+    x.fillStyle = p.vip ? '#f0a63c' : '#cfe0ea'; x.font='12px ui-monospace,monospace';
+    x.fillText((p.vip?'★ vip':'player') + ' #' + p.id, g.qx+36, yy);
+    x.fillStyle = '#3a4450';
+    x.fillText(Math.floor((tick-p.born)/60)+'s', g.qx+g.qw-38, yy);
+  });
+  if(queue.length > shown.length){ x.fillStyle='#5f6b78';
+    x.fillText('+'+(queue.length-shown.length)+' more…', g.qx+14, 168+shown.length*26); }
+  if(!queue.length){ x.fillStyle='#3a4450'; x.fillText('— empty —', g.qx+14, 172); }
+}
+
+function drawAgents(g){
+  agents.forEach((a,i)=>{
+    const {ax, ay} = g.pos(i);
+    a.flash = Math.max(0, a.flash - 0.02);
+    x.fillStyle = '#0b1017'; x.strokeStyle = a.flash > 0 ? 'rgba(77,227,255,'+(0.25+a.flash*0.75)+')' : '#1a2230';
+    x.lineWidth = a.flash > 0 ? 2 : 1;
+    x.fillRect(ax, ay, g.cw, g.ch); x.strokeRect(ax, ay, g.cw, g.ch); x.lineWidth = 1;
+    // status dot + name
+    x.fillStyle = SCOL[a.status]; x.beginPath(); x.arc(ax+18, ay+20, 5, 0, 7); x.fill();
+    x.fillStyle = '#dfeaf2'; x.font='600 14px ui-monospace,monospace';
+    x.fillText('agent ' + a.name, ax+30, ay+25);
+    x.fillStyle = SCOL[a.status]; x.font='11px ui-monospace,monospace';
+    x.fillText(a.status, ax+g.cw-14-x.measureText(a.status).width, ay+25);
+    // load bar
+    x.fillStyle='#5f6b78'; x.font='10px ui-monospace,monospace';
+    x.fillText('load '+a.chats.length+'/'+CAP, ax+14, ay+46);
+    x.fillStyle='#1a2230'; x.fillRect(ax+14, ay+52, g.cw-28, 8);
+    x.fillStyle = a.chats.length >= CAP ? '#ff5c6c' : '#4de3ff';
+    x.fillRect(ax+14, ay+52, (g.cw-28)*a.chats.length/CAP, 8);
+    // chat pips
+    a.chats.forEach((c,j)=>{ x.fillStyle = c.vip ? '#f0a63c' : '#4de3ff';
+      x.beginPath(); x.arc(ax+20+j*16, ay+74, 4, 0, 7); x.fill(); });
+    // live score
+    const s = score(a), el = eligible(a);
+    x.fillStyle = el ? '#26d07c' : '#3a4450'; x.font='11px ui-monospace,monospace';
+    x.fillText((el?'score ':'skip  ') + String(s).padStart(9,' '), ax+14, ay+g.ch-12);
+    x.fillStyle = '#3a4450';
+    x.fillText('idle '+idleSec(a)+'s', ax+g.cw-64, ay+g.ch-12);
+  });
+}
+
+function drawBeams(g){
+  const qx2 = g.qx + g.qw;
+  beams.forEach(b=>{
+    const {ax, ay} = g.pos(b.to);
+    const t = Math.min(1, b.t/28), e = 1-Math.pow(1-t,3);
+    const x0 = qx2, y0 = 170, x1 = ax, y1 = ay + g.ch/2;
+    x.strokeStyle = b.vip ? 'rgba(240,166,60,.35)' : 'rgba(77,227,255,.3)';
+    x.beginPath(); x.moveTo(x0,y0); x.quadraticCurveTo((x0+x1)/2, y0-40, x1, y1); x.stroke();
+    const qt = e, mx = (1-qt)*(1-qt)*x0 + 2*(1-qt)*qt*((x0+x1)/2) + qt*qt*x1;
+    const my = (1-qt)*(1-qt)*y0 + 2*(1-qt)*qt*(y0-40) + qt*qt*y1;
+    x.fillStyle = b.vip ? '#f0a63c' : '#dff3fb';
+    x.beginPath(); x.arc(mx, my, 5, 0, 7); x.fill();
+    b.t++;
+  });
+  beams = beams.filter(b=>b.t < 34);
+}
+
+function drawFormula(g){
+  let py = 120; const panelX = g.panelX, pw = g.pw;
+  const card=(h)=>{ x.fillStyle='#0b1017'; x.strokeStyle='#1a2230';
+    x.fillRect(panelX,py,pw,h); x.strokeRect(panelX,py,pw,h); };
+  const txt=(s,c,fy,f)=>{ x.fillStyle=c; x.font=(f||'12px')+' ui-monospace,monospace';
+    x.fillText(s,panelX+14,py+fy); };
+
+  card(118);
+  txt('THE SCORE  (zset member per agent)', '#5f6b78', 20, '11px');
+  txt('score =', '#cfe0ea', 44, '13px');
+  txt('  status     × 10⁸', '#26d07c', 64, '13px');
+  txt('+ free slots × 10⁴', '#4de3ff', 82, '13px');
+  txt('+ idle seconds', '#f0a63c', 100, '13px');
+  py += 132;
+
+  card(76);
+  txt('WHY THIS ORDER', '#5f6b78', 20, '11px');
+  txt('online beats busy beats away;', '#cfe0ea', 42);
+  txt('ties go to the freest agent;', '#cfe0ea', 58);
+  txt('final ties → waited-longest.', '#cfe0ea', 74);
+  py += 92;
+
+  card(66);
+  txt('LAST PICK', '#5f6b78', 20, '11px');
+  if(lastPick){
+    txt((lastPick.vip?'★ vip → ':'player → ') + 'agent ' + lastPick.agent,
+      lastPick.vip ? '#f0a63c' : '#4de3ff', 42, '13px');
+    txt('winning score ' + lastPick.s, '#26d07c', 60, '12px');
+  } else { txt('— no dispatch yet —', '#3a4450', 44); }
+}
+
+// ---------- simulation ----------
+function stepSim(){
+  tick++;
+  // finish chats
+  agents.forEach(a=>{ const before = a.chats.length;
+    a.chats = a.chats.filter(c=>c.done > tick);
+    if(before && !a.chats.length) a.idleSince = tick; });
+  // dispatch one per ~0.5s so picks are readable
+  if(tick % 30 === 0) dispatch();
+  if(auto && tick % 90 === 0) spawnPlayer(Math.random() < 0.25);
+}
+function loop(){ requestAnimationFrame(loop); stepSim(); draw(); }
+
+// reduced motion: advance the world silently, then render one frame
+function settle(n){ for(let i=0;i<n;i++) stepSim(); beams = []; draw(); }
+
+// ---------- controls ----------
+const sIntro = document.getElementById('sIntro');
+function fadeIntro(){ sIntro.classList.add('gone'); }
+document.getElementById('spawn').addEventListener('click', ()=>{ spawnPlayer(false); fadeIntro(); if(REDUCED) settle(35); });
+document.getElementById('spawnVip').addEventListener('click', ()=>{ spawnPlayer(true); fadeIntro(); if(REDUCED) settle(35); });
+document.getElementById('wave').addEventListener('click', ()=>{
+  for(let i=0;i<8;i++) spawnPlayer(Math.random()<0.25); fadeIntro(); if(REDUCED) settle(280); });
+document.getElementById('addAgent').addEventListener('click', ()=>{ addAgent(); fadeIntro(); if(REDUCED) draw(); });
+document.getElementById('auto').addEventListener('click', e=>{
+  auto = !auto; e.currentTarget.classList.toggle('on', auto);
+  e.currentTarget.textContent = 'auto arrivals: ' + (auto ? 'on' : 'off'); fadeIntro(); });
+
+// click an agent card → cycle status
+cv.addEventListener('click', e=>{
+  const g = geometry();
+  agents.forEach((a,i)=>{ const {ax,ay} = g.pos(i);
+    if(e.clientX >= ax && e.clientX <= ax+g.cw && e.clientY >= ay && e.clientY <= ay+g.ch){
+      a.status = STATUS[(STATUS.indexOf(a.status)+1) % STATUS.length];
+      if(a.status === 'online') a.idleSince = tick;
+      fadeIntro(); if(REDUCED) draw();
+    } });
+});
+setTimeout(fadeIntro, 9000);
+
+resize();
+// seed a little life so the floor isn't empty
+spawnPlayer(false); spawnPlayer(true); spawnPlayer(false);
+if(REDUCED){ settle(120); } else { requestAnimationFrame(loop); }
+window.__labReady = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Retry Storm — an idempotency playground</title>
+<meta name="description" content="Mash RETRY against a transaction pipeline and watch duplicates pile up — then flip idempotency on and see the ledger stay clean. Part of Henry Lee's Lab." />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#07090d" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Retry Storm — an idempotency playground" />
+<meta property="og:description" content="One workflow ID, a storm of retries, one ledger row. An interactive demo of the real design." />
+<meta property="og:url" content="https://henrylee94.github.io/lab/showcase-idempotency.html" />
+<meta name="twitter:card" content="summary" />
+<style>
+  :root { --bg:#07090d; --up:#26d07c; --down:#ff5c6c;
+    --cyan:#4de3ff; --amber:#f0a63c; --fg:#cfe0ea; --dim:#5f6b78; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  canvas { display:block; }
+  .tag { position:fixed; top:16px; left:20px; z-index:5; font-size:12px; color:var(--dim); }
+  .tag b { color:#dfeaf2; }
+  .back { position:fixed; top:16px; right:20px; z-index:5; font-size:12px; color:var(--dim); text-decoration:none; }
+  .back:hover { color:var(--cyan); }
+  .bar { position:fixed; bottom:0; left:0; right:0; z-index:5; min-height:56px;
+    background:rgba(10,14,20,.92); border-top:1px solid #1a2230; display:flex; align-items:center;
+    flex-wrap:wrap; gap:10px; padding:9px 20px; font-size:13px; }
+  .bar button { font-family:inherit; font-size:13px; cursor:pointer; border-radius:8px;
+    padding:8px 16px; transition:transform .12s, background .2s, box-shadow .2s; }
+  .bar button:active { transform:scale(.94); }
+  #retry { color:#07090d; background:var(--cyan); border:1px solid var(--cyan); font-weight:700;
+    letter-spacing:.08em; box-shadow:0 0 18px -6px rgba(77,227,255,.8); }
+  #retry:hover { background:#7ff0ff; }
+  #newreq { color:var(--cyan); background:rgba(77,227,255,.06); border:1px solid rgba(77,227,255,.3); }
+  #newreq:hover { background:rgba(77,227,255,.16); }
+  .toggle { color:var(--dim); background:transparent; border:1px solid #1c2530; }
+  .toggle.on { color:var(--up); border-color:rgba(38,208,124,.5); background:rgba(38,208,124,.07); }
+  .toggle.chaos.on { color:var(--down); border-color:rgba(255,92,108,.5); background:rgba(255,92,108,.07); }
+  .bar .note { margin-left:auto; color:var(--dim); font-size:11.5px; max-width:40ch; line-height:1.4; }
+  .s-intro { position:fixed; left:20px; bottom:76px; z-index:6; max-width:380px; color:var(--dim);
+    font-size:12.5px; line-height:1.5; transition:opacity .9s ease; }
+  .s-intro.gone { opacity:0; pointer-events:none; }
+  .s-intro b { color:var(--amber); }
+</style>
+</head>
+<body>
+  <div class="tag">V2 · Showcase — <b>Retry Storm</b> · interactive demo of the real design: workflow-ID as creation key</div>
+  <a class="back" href="lab.html">← the lab</a>
+  <canvas id="c"></canvas>
+  <div class="s-intro" id="sIntro">Networks retry. Queues redeliver. Users double-click.
+    The transaction backbone I run at work survives all three with one trick —
+    <b>the workflow ID is the creation key</b>. Mash RETRY and see for yourself.</div>
+  <div class="bar">
+    <button id="retry">⟳ RETRY</button>
+    <button id="newreq">+ new request</button>
+    <button id="chaos" class="toggle chaos">☠ chaos mode: off</button>
+    <button id="idem" class="toggle">🛡 idempotency: off</button>
+    <span class="note">off = every delivery inserts · on = retries return the existing record</span>
+  </div>
+
+<script>
+const cv = document.getElementById('c'), x = cv.getContext('2d');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;   // static frame if set
+let W, H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; if(REDUCED) draw(); }
+addEventListener('resize', resize);
+
+// ---------- state ----------
+const STAGES = ['CREATE','REVIEW','APPROVE','EXECUTE'];
+let idem = false, chaos = false;
+let wfSeq = 0, curWf = null;          // current workflow id being retried
+let flights = [];                      // deliveries in flight: {wf, t, dead, deadT}
+let ledger = [];                       // {wf, txn, dup, born, hit}
+let floats = [];                       // floating labels {tx, ty, t, txt, col}
+let stats = { deliveries:0, clean:0, dups:0, hits:0 };
+let tick = 0, chaosAcc = 0;
+
+function newWf(){ wfSeq++; return 'wf-' + (1000 + Math.floor(Math.random()*9000)) + '-' + wfSeq; }
+function spawn(wf){ flights.push({ wf, t:0, dead:false, deadT:0, lane:(Math.random()-0.5) }); stats.deliveries++; }
+function newRequest(){ curWf = newWf(); spawn(curWf); fadeIntro(); }
+function retry(){ if(!curWf) { newRequest(); return; } spawn(curWf); fadeIntro(); }
+
+// a delivery that reaches EXECUTE tries to write the ledger
+function land(f, ex, ey){
+  const existing = ledger.find(r => r.wf === f.wf);
+  if(idem && existing){                             // creation-key hit: return the same record
+    existing.hit = 1; stats.hits++;
+    floats.push({ tx:ex, ty:ey-18, t:0, txt:'hit → returned '+existing.txn, col:'#26d07c' });
+    return;
+  }
+  const dup = !!existing;                           // no guard: second insert = duplicate
+  const txn = 'txn-' + (100000 + Math.floor(Math.random()*900000));
+  ledger.push({ wf:f.wf, txn, dup, born:0, hit:0 });
+  if(ledger.length > 14) ledger.shift();
+  if(dup){ stats.dups++; floats.push({ tx:ex, ty:ey-18, t:0, txt:'DUPLICATE '+txn, col:'#ff5c6c' }); }
+  else   { stats.clean++; floats.push({ tx:ex, ty:ey-18, t:0, txt:'created '+txn, col:'#4de3ff' }); }
+}
+
+// ---------- layout helpers ----------
+function geometry(){
+  const left = 30, chartW = Math.min(W*0.60, W-380), top = H*0.30;
+  const panelX = left + chartW + 40, pw = W - panelX - 26;
+  const sx = i => left + 40 + (chartW-80) * (i/(STAGES.length-1));
+  return { left, chartW, top, panelX, pw, sx };
+}
+
+// ---------- draw ----------
+function draw(){
+  const g = geometry();
+  x.fillStyle = '#07090d'; x.fillRect(0,0,W,H);
+
+  // header
+  x.fillStyle = '#dfeaf2'; x.font = '700 26px ui-monospace,monospace'; x.textBaseline='alphabetic';
+  x.fillText('RETRY STORM', g.left, 66);
+  x.fillStyle = idem ? '#26d07c' : '#ff5c6c'; x.font = '13px ui-monospace,monospace';
+  x.fillText(idem ? '🛡 idempotent — workflow ID is the creation key' : '⚠ unguarded — every delivery inserts', g.left, 90);
+
+  drawPipeline(g);
+  drawFlights(g);
+  drawFloats();
+  drawPanel(g);
+}
+
+function drawPipeline(g){
+  // rail
+  x.strokeStyle = '#1a2230'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(g.sx(0), g.top); x.lineTo(g.sx(3), g.top); x.stroke();
+  // stage nodes
+  STAGES.forEach((s,i)=>{
+    const nx = g.sx(i);
+    x.fillStyle = '#0b1017'; x.strokeStyle = i===3 ? 'rgba(240,166,60,.7)' : 'rgba(77,227,255,.45)';
+    x.lineWidth = 1.5;
+    x.beginPath(); x.arc(nx, g.top, 17, 0, 7); x.fill(); x.stroke();
+    x.fillStyle = i===3 ? '#f0a63c' : '#4de3ff'; x.font = '11px ui-monospace,monospace'; x.textAlign='center';
+    x.fillText(s, nx, g.top + 40);
+    x.textAlign='left';
+  });
+  // ledger drop under EXECUTE
+  const ex = g.sx(3);
+  x.strokeStyle = '#1a2230'; x.setLineDash([4,4]);
+  x.beginPath(); x.moveTo(ex, g.top+17); x.lineTo(ex, g.top+70); x.stroke(); x.setLineDash([]);
+  x.fillStyle = '#5f6b78'; x.font='11px ui-monospace,monospace'; x.textAlign='center';
+  x.fillText('▼ ledger', ex, g.top+86); x.textAlign='left';
+  // current workflow badge
+  x.fillStyle = '#5f6b78'; x.font = '12px ui-monospace,monospace';
+  x.fillText('current request: ', g.left, g.top - 56);
+  x.fillStyle = '#f0a63c';
+  x.fillText(curWf || '(press RETRY or + new request)', g.left + 140, g.top - 56);
+}
+
+function drawFlights(g){
+  flights.forEach(f=>{
+    const px = g.sx(0) + (g.sx(3)-g.sx(0)) * Math.min(1, f.t);
+    const py = g.top + f.lane*26;
+    if(f.dead){                                            // chaos kill: red X fading
+      x.globalAlpha = Math.max(0, 1 - f.deadT/40);
+      x.strokeStyle = '#ff5c6c'; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(px-6,py-6); x.lineTo(px+6,py+6);
+      x.moveTo(px+6,py-6); x.lineTo(px-6,py+6); x.stroke();
+      x.globalAlpha = 1; return;
+    }
+    x.fillStyle = '#dff3fb';
+    x.beginPath(); x.arc(px, py, 5, 0, 7); x.fill();
+    x.fillStyle = 'rgba(77,227,255,.7)'; x.font = '10px ui-monospace,monospace';
+    x.fillText(f.wf, px + 9, py + 3);
+  });
+}
+
+function drawFloats(){
+  floats.forEach(fl=>{
+    x.globalAlpha = Math.max(0, 1 - fl.t/90);
+    x.fillStyle = fl.col; x.font = '12px ui-monospace,monospace';
+    x.fillText(fl.txt, fl.tx - 40, fl.ty - fl.t*0.5);
+    x.globalAlpha = 1;
+  });
+}
+
+function drawPanel(g){
+  let py = 56; const pw = g.pw, panelX = g.panelX;
+  const card=(h)=>{ x.fillStyle='#0b1017'; x.strokeStyle='#1a2230';
+    x.fillRect(panelX,py,pw,h); x.strokeRect(panelX,py,pw,h); };
+  const txt=(s,c,fy,f)=>{ x.fillStyle=c; x.font=(f||'13px')+' ui-monospace,monospace';
+    x.fillText(s,panelX+16,py+fy); };
+
+  // score card
+  card(76);
+  txt('LEDGER INTEGRITY', '#5f6b78', 22, '11px');
+  const total = stats.clean + stats.dups;
+  const pct = total === 0 ? 100 : Math.round(stats.clean/total*100);
+  const scol = pct === 100 ? '#26d07c' : pct >= 70 ? '#f0a63c' : '#ff5c6c';
+  x.fillStyle = scol; x.font = '700 28px ui-monospace,monospace';
+  x.fillText(pct + '%', panelX+16, py+58);
+  x.fillStyle = '#1a2230'; x.fillRect(panelX+120, py+40, pw-140, 14);
+  x.fillStyle = scol; x.fillRect(panelX+120, py+40, (pw-140)*pct/100, 14);
+  py += 92;
+
+  // counters card
+  card(66);
+  const cnt=(lbl,val,col,cx)=>{ x.fillStyle='#5f6b78'; x.font='11px ui-monospace,monospace';
+    x.fillText(lbl, panelX+cx, py+22); x.fillStyle=col; x.font='700 20px ui-monospace,monospace';
+    x.fillText(String(val), panelX+cx, py+50); };
+  cnt('deliveries', stats.deliveries, '#dfeaf2', 16);
+  cnt('records', stats.clean, '#4de3ff', 16 + pw*0.27);
+  cnt('duplicates', stats.dups, stats.dups ? '#ff5c6c' : '#3a4450', 16 + pw*0.52);
+  cnt('idem hits', stats.hits, stats.hits ? '#26d07c' : '#3a4450', 16 + pw*0.78);
+  py += 82;
+
+  // ledger card
+  const rows = Math.min(ledger.length, 12);
+  card(34 + Math.max(rows,1)*20 + 8);
+  txt('LEDGER  (append-only)', '#5f6b78', 22, '11px');
+  if(!ledger.length){ txt('— empty · fire a request —', '#3a4450', 46, '12px'); }
+  ledger.slice(-12).forEach((r,i)=>{
+    const yy = py + 44 + i*20;
+    r.hit = Math.max(0, r.hit - 0.02);
+    if(r.hit > 0){ x.fillStyle = 'rgba(38,208,124,'+(r.hit*0.18)+')'; x.fillRect(panelX+8, yy-13, pw-16, 18); }
+    x.fillStyle = r.dup ? '#ff5c6c' : '#26d07c'; x.font='12px ui-monospace,monospace';
+    x.fillText(r.dup ? '✗' : '✓', panelX+16, yy);
+    x.fillStyle = r.dup ? '#ff5c6c' : '#cfe0ea';
+    x.fillText(r.txn + '  ·  ' + r.wf + (r.dup ? '  DUP' : ''), panelX+36, yy);
+  });
+  py += 34 + Math.max(rows,1)*20 + 24;
+
+  // how-it-works note
+  x.fillStyle = '#3a4450'; x.font = '11px ui-monospace,monospace';
+  ['the real design: creation is keyed by the workflow ID, so a',
+   'redelivered message or a double-click can only ever land once.']
+  .forEach((l,i)=> x.fillText(l, panelX+2, py + 16 + i*16));
+}
+
+// ---------- simulation loop ----------
+function stepSim(){
+  tick++;
+  flights.forEach(f=>{
+    if(f.dead){ f.deadT++; return; }
+    f.t += 0.011;
+    if(chaos && f.t < 0.9 && Math.random() < 0.004){         // random mid-flight failure
+      f.dead = true;
+      floats.push({ tx: geometry().sx(0) + (geometry().sx(3)-geometry().sx(0))*f.t,
+        ty: geometry().top - 26, t:0, txt:'✗ timeout → queue will redeliver', col:'#ff5c6c' });
+      setTimeout(()=>spawn(f.wf), 500 + Math.random()*700);  // the redelivery
+      return;
+    }
+    if(f.t >= 1){ f.landed = true; land(f, geometry().sx(3), geometry().top); }
+  });
+  flights = flights.filter(f => !f.landed && !(f.dead && f.deadT > 45));
+  floats.forEach(fl=>fl.t++); floats = floats.filter(fl=>fl.t < 95);
+  if(chaos){ chaosAcc++;                                      // chaos also mashes RETRY for you
+    if(chaosAcc > 50 && curWf){ chaosAcc = 0; if(Math.random()<0.8) spawn(curWf); } }
+}
+function loop(){ requestAnimationFrame(loop); stepSim(); draw(); }
+
+// ---------- controls ----------
+const sIntro = document.getElementById('sIntro');
+function fadeIntro(){ sIntro.classList.add('gone'); }
+document.getElementById('retry').addEventListener('click', ()=>{ retry(); if(REDUCED) fastForward(); });
+document.getElementById('newreq').addEventListener('click', ()=>{ newRequest(); if(REDUCED) fastForward(); });
+document.getElementById('chaos').addEventListener('click', e=>{
+  chaos = !chaos; e.currentTarget.classList.toggle('on', chaos);
+  e.currentTarget.textContent = '☠ chaos mode: ' + (chaos ? 'on' : 'off'); fadeIntro(); });
+document.getElementById('idem').addEventListener('click', e=>{
+  idem = !idem; e.currentTarget.classList.toggle('on', idem);
+  e.currentTarget.textContent = '🛡 idempotency: ' + (idem ? 'on' : 'off');
+  if(REDUCED) draw(); });
+setTimeout(fadeIntro, 9000);
+
+// reduced motion: no animation loop — resolve each delivery instantly, redraw one frame
+function fastForward(){ flights.forEach(f=>{ f.t = 1; land(f, geometry().sx(3), geometry().top); });
+  flights = []; floats = []; draw(); }
+
+resize();
+curWf = newWf(); spawn(curWf);              // seed one request so the floor isn't empty
+if(REDUCED){ fastForward(); } else { requestAnimationFrame(loop); }
+window.__labReady = true;
+</script>
+</body>
+</html>
