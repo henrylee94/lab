@@ -51,6 +51,61 @@
   .tags span { font-family:ui-monospace,monospace; font-size:10.5px; color:var(--dim);
     border:1px solid #1c2530; border-radius:20px; padding:3px 9px; }
 
+  .section { margin-top:9vh; }
+  .sec-label { font-family:ui-monospace,monospace; color:var(--amber); font-size:12px;
+    letter-spacing:.2em; text-transform:uppercase; }
+  .sec-title { font-size:clamp(1.4rem,3.4vw,2.1rem); letter-spacing:-.02em; margin:10px 0 22px; }
+
+  .hood { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; }
+  .hood article { border:1px solid #18202b; border-radius:12px; background:#0a0e15; padding:16px 18px; }
+  .hood .k { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--cyan); }
+  .hood h3 { font-size:1.05rem; margin:7px 0 6px; letter-spacing:-.01em; }
+  .hood p { color:var(--dim); font-size:.86rem; line-height:1.5; }
+  .hood code { font-family:ui-monospace,monospace; font-size:.82em; color:var(--fg);
+    background:#10161f; border-radius:4px; padding:1px 5px; }
+
+  .term { display:block; text-decoration:none; color:inherit; border:1px solid #18202b;
+    border-radius:12px; background:#080b11; overflow:hidden; max-width:640px;
+    transition:border-color .35s, box-shadow .35s; }
+  .term:hover { border-color:#2a3a4a; box-shadow:0 20px 50px -20px rgba(77,227,255,.25); }
+  .term-bar { display:flex; align-items:center; gap:6px; padding:9px 14px;
+    border-bottom:1px solid #131a24; font-family:ui-monospace,monospace; font-size:11px; color:var(--dim); }
+  .term-bar i { width:9px; height:9px; border-radius:50%; background:#1c2530; }
+  .term-bar i:first-child { background:#ff5c6c55; }
+  .term-bar i:nth-child(2) { background:#f0a63c55; }
+  .term-bar i:nth-child(3) { background:#26d07c55; }
+  .term-bar span { margin-left:8px; }
+  .term pre { padding:16px 18px 6px; font-family:ui-monospace,monospace; font-size:12.5px;
+    line-height:1.65; color:var(--dim); overflow-x:auto; }
+  .term pre b { color:var(--fg); font-weight:400; }
+  .term pre .p { color:var(--cyan); }
+  .term pre .a { color:var(--amber); }
+  .term .cursor { display:inline-block; width:7px; height:13px; background:var(--cyan);
+    vertical-align:-2px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .term .cursor { animation:blink 1.1s steps(1) infinite; }
+  }
+  @keyframes blink { 50% { opacity:0; } }
+  .term-cta { padding:12px 18px 16px; color:var(--amber); font-family:ui-monospace,monospace; font-size:13px; }
+
+  .bench { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+  .bench a { display:block; text-decoration:none; color:inherit; border:1px solid #18202b;
+    border-radius:12px; background:#0a0e15; padding:15px 18px;
+    transition:border-color .35s, transform .35s cubic-bezier(.2,.7,.2,1); }
+  .bench a:hover { border-color:#2a3a4a; transform:translateY(-3px); }
+  .bench .k { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--cyan); }
+  .bench h3 { font-size:1.02rem; margin:6px 0 5px; letter-spacing:-.01em; }
+  .bench p { color:var(--dim); font-size:.85rem; line-height:1.5; }
+  .bench .url { margin-top:10px; font-family:ui-monospace,monospace; font-size:11.5px; color:var(--amber);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior:auto; }
+    .card, .bench a, .term { transition:none; }
+    .card:hover, .bench a:hover { transform:none; }
+  }
+
   footer { margin-top:9vh; padding-top:28px; border-top:1px solid #141b24; color:var(--dim);
     font-size:13px; display:flex; flex-wrap:wrap; gap:18px; align-items:center; justify-content:space-between; }
   footer a { color:var(--dim); text-decoration:none; } footer a:hover { color:var(--cyan); }
@@ -100,6 +155,76 @@
       </div>
     </div>
 
+    <section class="section" aria-labelledby="hood-title">
+      <div class="sec-label">under the hood</div>
+      <h2 class="sec-title" id="hood-title">No framework, no build, <span class="serif">no backend.</span></h2>
+      <div class="hood">
+        <article>
+          <div class="k">terminal engine</div>
+          <h3>A real shell, in vanilla JS</h3>
+          <p>Typeable commands with Tab-complete and ↑/↓ history, over a small virtual filesystem — <code>ls</code>, <code>cat</code>, <code>ps</code>, <code>ping</code> — all hand-rolled, no library.</p>
+        </article>
+        <article>
+          <div class="k">3d scene</div>
+          <h3>Three.js + UnrealBloom</h3>
+          <p>An orbitable mini-PC that boots into a holographic screen — <code>OrbitControls</code>, bloom post-processing, and a canvas texture as the terminal display.</p>
+        </article>
+        <article>
+          <div class="k">architecture</div>
+          <h3>One file per page</h3>
+          <p>Each showcase is a single self-contained HTML file. Dependencies pinned via import map to <code>three@0.161.0</code> on the CDN. Deploys as plain GitHub Pages.</p>
+        </article>
+        <article>
+          <div class="k">ci guard</div>
+          <h3>Checks on every PR</h3>
+          <p>A no-dependency script runs <code>node --check</code> on every inline script block and verifies every local link target exists; Prettier keeps the tooling formatted.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="term-title">
+      <div class="sec-label">try the terminal</div>
+      <h2 class="sec-title" id="term-title">The machine is <span class="serif">on the other page.</span></h2>
+      <a class="term" href="index.html">
+        <div class="term-bar"><i></i><i></i><i></i><span>geewoni@henry.home — holo-terminal</span></div>
+        <pre>
+<span class="p">~ $</span> <b>help</b>
+  <span class="a">system </span> │ neofetch  services  cron  top  ping
+  <span class="a">agent  </span> │ hermes  memory  mnemosyne  skills  gaps
+  <span class="a">trading</span> │ backtest   (live: open scalp)
+  hint: Tab completes · ↑/↓ history
+<span class="p">~ $</span> <b>neofetch</b>
+  geewoni@henry.home · UM890 Pro · up 24/7 since 2026-05-26
+<span class="p">~ $</span> <span class="cursor"></span></pre>
+        <div class="term-cta">▶ boot the machine and type it yourself →</div>
+      </a>
+    </section>
+
+    <section class="section" aria-labelledby="bench-title">
+      <div class="sec-label">from the workbench</div>
+      <h2 class="sec-title" id="bench-title">Where the rest of it <span class="serif">lives.</span></h2>
+      <div class="bench">
+        <a href="https://github.com/henrylee94/ai-native-sdlc" target="_blank" rel="noopener">
+          <div class="k">github · repo</div>
+          <h3>ai-native-sdlc</h3>
+          <p>The AI delivery pipeline my team actually ships through — role-based agent workflow, from requirement to review.</p>
+          <div class="url">github.com/henrylee94/ai-native-sdlc</div>
+        </a>
+        <a href="https://henrylee94.github.io/portfolio/" target="_blank" rel="noopener">
+          <div class="k">site</div>
+          <h3>portfolio</h3>
+          <p>The serious one — who I am, what I've shipped, and how I work. This lab is the playground next door.</p>
+          <div class="url">henrylee94.github.io/portfolio</div>
+        </a>
+        <a href="https://github.com/henrylee94/lab" target="_blank" rel="noopener">
+          <div class="k">github · source</div>
+          <h3>this lab, in the open</h3>
+          <p>Everything on this page — the terminal, the 3D scene, the scalp-analyzer showcase — readable in one repo.</p>
+          <div class="url">github.com/henrylee94/lab</div>
+        </a>
+      </div>
+    </section>
+
     <footer>
       <a href="https://henrylee94.github.io/portfolio/">← back to the main portfolio</a>
       <span class="links">
@@ -110,6 +235,9 @@
   </div>
 
 <script>
+// accessibility: under prefers-reduced-motion, draw one static frame instead of looping
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // ambient background — drifting particles
 (function(){
   const c=document.getElementById('bg'), x=c.getContext('2d'); let W,H,dots=[];
@@ -117,7 +245,7 @@
     dots=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,
       r:Math.random()*1.6+.3,s:Math.random()*.3+.05})); }
   rs(); addEventListener('resize',rs);
-  (function d(){ requestAnimationFrame(d); x.clearRect(0,0,W,H);
+  (function d(){ if(!REDUCED) requestAnimationFrame(d); x.clearRect(0,0,W,H);
     dots.forEach(p=>{ p.y-=p.s; if(p.y<0)p.y=H; x.fillStyle='rgba(77,227,255,'+(p.r*.14)+')';
       x.beginPath(); x.arc(p.x,p.y,p.r,0,7); x.fill(); }); })();
 })();
@@ -128,7 +256,7 @@ document.querySelectorAll('canvas[data-thumb]').forEach(cv=>{
   function sz(){ cv.width=cv.offsetWidth; cv.height=cv.offsetHeight; }
   const ro=new ResizeObserver(sz); ro.observe(cv); sz();
   let t=0;
-  (function d(){ requestAnimationFrame(d); t++; const W=cv.width,H=cv.height;
+  (function d(){ if(!REDUCED) requestAnimationFrame(d); t++; const W=cv.width,H=cv.height;
     x.fillStyle='#080c13'; x.fillRect(0,0,W,H);
     if(kind==='home'){ // pulsing node mesh into a center box
       const cx=W/2,cy=H/2; for(let i=0;i<7;i++){ const a=i/7*6.28+t*0.004, r=Math.min(W,H)*0.4;
