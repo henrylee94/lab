@@ -38,11 +38,31 @@
   .s-intro { position:fixed; left:20px; bottom:94px; z-index:6; max-width:360px; color:var(--dim);
     font-size:12.5px; line-height:1.5; transition:opacity .9s ease; }
   .s-intro.gone { opacity:0; }
+  /* how-to-play strip — first thing a visitor reads */
+  .howto { position:fixed; top:44px; left:20px; right:20px; z-index:6; display:flex;
+    align-items:center; gap:12px; padding:9px 14px; background:rgba(10,14,20,.94);
+    border:1px solid rgba(77,227,255,.28); border-radius:10px; font-size:12.5px;
+    color:var(--fg); line-height:1.45; box-shadow:0 8px 30px -12px rgba(0,0,0,.7);
+    transition:opacity .5s ease; }
+  .howto.gone { opacity:0; pointer-events:none; }
+  .howto .lbl { color:var(--cyan); font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; font-size:11px; white-space:nowrap; }
+  .howto b { color:var(--amber); }
+  .howto .x { margin-left:auto; flex-shrink:0; background:none; border:0; color:var(--dim);
+    font-size:16px; line-height:1; cursor:pointer; padding:2px 4px; }
+  .howto .x:hover { color:var(--cyan); }
+  @media (max-width:640px){ .howto .lbl { display:none; } }
 </style>
 </head>
 <body>
   <div class="tag">V2 · Showcase — <b>scalp-analyzer</b> · live US-stock scalping desk</div>
-  <a class="back" href="lab.html">← the lab</a>
+  <a class="back" href="lab.html">← back to the lab</a>
+  <div class="howto" id="howto">
+    <span class="lbl">How to play</span>
+    <span>Tap a ticker chip below (<b>NVDA</b>, <b>TSLA</b>…) or type <b>check NVDA</b> and press Enter —
+      read the safety score, confluence checklist and the entry/target/stop card.</span>
+    <button class="x" id="howtoX" aria-label="dismiss">×</button>
+  </div>
   <canvas id="c"></canvas>
   <div class="s-intro" id="sIntro">I built the backtest engine before trusting a cent — this is the live read on top of it.</div>
   <div class="chips" id="chips"></div>
@@ -228,6 +248,10 @@ function loop(ts){ requestAnimationFrame(loop);
 }
 seed('NVDA'); window.__scalpReady = true;
 if(!REDUCED) requestAnimationFrame(loop);   // reduced-motion: static snapshot, no live loop
+
+// ---------- how-to-play strip ----------
+const howto=document.getElementById('howto');
+document.getElementById('howtoX').addEventListener('click', e=>{ e.stopPropagation(); howto.classList.add('gone'); });
 
 // ---------- command input ----------
 const sIntro=document.getElementById('sIntro');
