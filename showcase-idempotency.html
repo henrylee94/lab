@@ -42,11 +42,31 @@
     font-size:12.5px; line-height:1.5; transition:opacity .9s ease; }
   .s-intro.gone { opacity:0; pointer-events:none; }
   .s-intro b { color:var(--amber); }
+  /* how-to-play strip — first thing a visitor reads */
+  .howto { position:fixed; top:44px; left:20px; right:20px; z-index:6; display:flex;
+    align-items:center; gap:12px; padding:9px 14px; background:rgba(10,14,20,.94);
+    border:1px solid rgba(77,227,255,.28); border-radius:10px; font-size:12.5px;
+    color:var(--fg); line-height:1.45; box-shadow:0 8px 30px -12px rgba(0,0,0,.7);
+    transition:opacity .5s ease; }
+  .howto.gone { opacity:0; pointer-events:none; }
+  .howto .lbl { color:var(--cyan); font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; font-size:11px; white-space:nowrap; }
+  .howto b { color:var(--amber); }
+  .howto .x { margin-left:auto; flex-shrink:0; background:none; border:0; color:var(--dim);
+    font-size:16px; line-height:1; cursor:pointer; padding:2px 4px; }
+  .howto .x:hover { color:var(--cyan); }
+  @media (max-width:640px){ .howto .lbl { display:none; } }
 </style>
 </head>
 <body>
   <div class="tag">V2 · Showcase — <b>Retry Storm</b> · interactive demo of the real design: workflow-ID as creation key</div>
-  <a class="back" href="lab.html">← the lab</a>
+  <a class="back" href="lab.html">← back to the lab</a>
+  <div class="howto" id="howto">
+    <span class="lbl">How to play</span>
+    <span>Hit <b>⟳ RETRY</b> a few times (or turn on <b>chaos mode</b>), then toggle
+      <b>idempotency</b> on/off and watch the ledger — red rows are duplicates, green stays clean.</span>
+    <button class="x" id="howtoX" aria-label="dismiss">×</button>
+  </div>
   <canvas id="c"></canvas>
   <div class="s-intro" id="sIntro">Networks retry. Queues redeliver. Users double-click.
     The transaction backbone I run at work survives all three with one trick —
@@ -251,6 +271,8 @@ function stepSim(){
 function loop(){ requestAnimationFrame(loop); stepSim(); draw(); }
 
 // ---------- controls ----------
+const howto = document.getElementById('howto');
+document.getElementById('howtoX').addEventListener('click', ()=> howto.classList.add('gone'));
 const sIntro = document.getElementById('sIntro');
 function fadeIntro(){ sIntro.classList.add('gone'); }
 document.getElementById('retry').addEventListener('click', ()=>{ retry(); if(REDUCED) fastForward(); });

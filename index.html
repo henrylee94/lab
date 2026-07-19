@@ -55,6 +55,24 @@
     padding:6px 13px; cursor:pointer; transition:background .2s, transform .2s, box-shadow .2s; }
   .chips button:hover { background:rgba(77,227,255,.16); transform:translateY(-2px);
     box-shadow:0 6px 18px -8px rgba(77,227,255,.6); }
+  /* "try these ↓" label above the chips */
+  .chips-lbl { position:fixed; bottom:96px; left:50%; transform:translateX(-50%); z-index:5;
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--amber);
+    opacity:0; transition:opacity .6s ease; pointer-events:none; text-shadow:0 0 10px rgba(240,166,60,.5); }
+  .chips-lbl.show { opacity:.9; }
+  /* first-visit onboarding hint — gated by localStorage lab_seen */
+  #onb { position:fixed; z-index:8; left:50%; transform:translateX(-50%); bottom:120px;
+    max-width:min(90vw,420px); padding:14px 18px; text-align:center;
+    background:rgba(8,12,18,.94); border:1px solid rgba(77,227,255,.35); border-radius:12px;
+    box-shadow:0 12px 40px -14px rgba(0,0,0,.8); transition:opacity .5s ease; }
+  #onb.gone { opacity:0; pointer-events:none; }
+  #onb .step { color:var(--cyan); font-size:14px; line-height:1.5;
+    text-shadow:0 0 12px rgba(77,227,255,.4); }
+  #onb .step b { color:var(--amber); }
+  #onb .step code { color:#dff3fb; background:rgba(77,227,255,.12); border-radius:4px; padding:1px 6px; }
+  #onb .dismiss { margin-top:10px; background:none; border:0; color:#5c6675; font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; cursor:pointer; font-family:inherit; }
+  #onb .dismiss:hover { color:var(--cyan); }
 </style>
 </head>
 <body>
@@ -69,7 +87,12 @@
   <div class="hud">drag to orbit · scroll to zoom<br />booted? <b>tap a chip</b> below, or type <b>help</b></div>
   <div id="app"></div>
   <div class="vignette"></div>
+  <div class="chips-lbl" id="chipsLbl">try these ↓</div>
   <div class="chips" id="chips"></div>
+  <div id="onb" class="gone">
+    <div class="step" id="onbStep">① <b>Click anywhere</b> to boot the machine</div>
+    <button class="dismiss" id="onbDismiss">skip</button>
+  </div>
   <div id="fallback" style="position:fixed;inset:0;z-index:20;display:none;flex-direction:column;
     align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px;
     background:#05070c;color:#cfeaf2;font-family:ui-monospace,monospace">
@@ -518,10 +541,21 @@ function run(raw){ const line = raw.trim(); print(PROMPT + line, C.cyan);
 const CHIP_CMDS = ['neofetch','memory','mnemosyne','backtest','gaps','rules','ai','showcases'];
 const chipBox = document.getElementById('chips');
 CHIP_CMDS.forEach(cmd=>{ const b=document.createElement('button'); b.textContent=cmd;
-  b.addEventListener('click', ()=>{ if(!booted){ boot(); return; } if(accepting) run(cmd); });
+  b.addEventListener('click', ()=>{ if(!booted){ boot(); return; }
+    if(accepting){ dismissOnb(); run(cmd); } });
   chipBox.appendChild(b); });
 const sndBtn = document.getElementById('snd');
 sndBtn.addEventListener('click', ()=>{ muted=!muted; sndBtn.classList.toggle('off', muted); });
+
+// ---- first-visit onboarding (gated by localStorage 'lab_seen') ----
+const onb = document.getElementById('onb'), onbStep = document.getElementById('onbStep');
+const chipsLbl = document.getElementById('chipsLbl');
+let firstVisit = false, helpAutoRun = false;
+try { firstVisit = !localStorage.getItem('lab_seen'); } catch(e) { /* storage blocked: treat as returning */ }
+function seenIt(){ try { localStorage.setItem('lab_seen', '1'); } catch(e){} }
+function dismissOnb(){ onb.classList.add('gone'); seenIt(); }
+document.getElementById('onbDismiss').addEventListener('click', e=>{ e.stopPropagation(); dismissOnb(); });
+if(firstVisit){ onb.classList.remove('gone'); }   // step ① shows until the user boots
 
 // ---- boot ----
 const BOOT = [
@@ -545,6 +579,11 @@ function boot(){
   flash = 1;                       // screen power-on flash
   typeQ = BOOT.slice();            // typed char-by-char in the render loop
   bootSound();
+  // onboarding: booted → advance to step ② (it lingers until dismissed / first command)
+  if(firstVisit && onbStep){
+    onbStep.innerHTML = '② Type <code>help</code> or <b>tap a command</b> below ↓';
+    seenIt();   // engaged once — don't replay the overlay on a future visit
+  }
 }
 // soft two-tone power-on chime (synth, no assets). user gesture unlocks audio.
 let actx;
@@ -568,6 +607,7 @@ function bootSound(){
 addEventListener('keydown', e=>{
   if(!booted){ boot(); return; }
   if(!accepting) return;
+  if(!onb.classList.contains('gone')) dismissOnb();   // typing = onboarding done
   if(e.key==='Enter'){ run(input); input=''; e.preventDefault(); }
   else if(e.key==='Backspace'){ input=input.slice(0,-1); e.preventDefault(); }
   else if(e.key==='ArrowUp'){ if(cmdHist.length){ histIdx=Math.max(0,histIdx-1); input=cmdHist[histIdx]; } e.preventDefault(); }
@@ -617,7 +657,10 @@ function tick(){
     if(typing.t === ''){ history.push(typing); typing = null; } }
   if(typing){ typedN += 1.7;
     if(typedN >= typing.t.length){ history.push({ t:typing.t, c:typing.c }); typing = null; } }
-  if(booted && !accepting && !typing && typeQ.length === 0){ accepting = true; chipBox.classList.add('show'); }
+  if(booted && !accepting && !typing && typeQ.length === 0){ accepting = true;
+    chipBox.classList.add('show'); chipsLbl.classList.add('show');
+    if(!helpAutoRun){ helpAutoRun = true; run('help'); }   // show commands without guessing
+  }
 
   // ambient motion — skipped under prefers-reduced-motion
   if(!REDUCED){

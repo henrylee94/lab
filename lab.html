@@ -31,12 +31,19 @@
     background-clip:text; color:transparent; }
   header p { color:var(--dim); font-size:clamp(1rem,2vw,1.25rem); max-width:52ch; line-height:1.55; }
 
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:22px; margin-top:7vh; }
-  .card { position:relative; display:block; text-decoration:none; color:inherit; overflow:hidden;
+  .grid-intro { margin-top:7vh; font-family:ui-monospace,monospace; font-size:13px;
+    color:var(--dim); letter-spacing:.02em; }
+  .grid-intro b { color:var(--cyan); font-weight:400; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:22px; margin-top:18px; }
+  .card { position:relative; display:block; cursor:pointer; text-decoration:none; color:inherit; overflow:hidden;
     border:1px solid #18202b; border-radius:14px; background:#0a0e15; min-height:260px;
     transition:transform .35s cubic-bezier(.2,.7,.2,1), border-color .35s, box-shadow .35s; }
-  .card:hover { transform:translateY(-6px); border-color:#2a3a4a;
-    box-shadow:0 20px 50px -20px rgba(77,227,255,.25); }
+  .card:hover, .card:focus-visible { transform:translateY(-6px); border-color:#2a3a4a;
+    box-shadow:0 20px 50px -20px rgba(77,227,255,.25); outline:none; }
+  .card:focus-visible { border-color:var(--cyan);
+    box-shadow:0 0 0 2px rgba(77,227,255,.5), 0 20px 50px -20px rgba(77,227,255,.25); }
+  .card .do { color:var(--cyan); font-family:ui-monospace,monospace; font-size:12px;
+    line-height:1.4; margin:0 0 8px; }
   .card .thumb { height:150px; position:relative; overflow:hidden; }
   .card .thumb canvas { position:absolute; inset:0; width:100%; height:100%; }
   .card .body { padding:18px 20px 22px; }
@@ -140,12 +147,15 @@
       <p>Backend Team Lead by day. Off the clock: interactive systems and a self-hosted AI agent, run on the same engineering discipline as my day job — memory architecture, tiered model routing, honest post-mortems. Click in and poke around.</p>
     </header>
 
+    <p class="grid-intro">▸ Interactive demos of systems I've designed — <b>click any card to run it.</b></p>
+
     <div class="grid">
       <a class="card" href="index.html">
         <div class="thumb"><canvas data-thumb="home"></canvas></div>
         <div class="body">
           <div class="kind">3D · Three.js</div>
           <h2>Boot henry.home</h2>
+          <p class="do">→ click to power it on, then type commands in the terminal</p>
           <p>Power on a 3D UM890 mini-PC; it projects a holographic terminal. Explore the real home lab — <code>hermes</code>, <code>services</code>, the rules my agents live by.</p>
           <div class="tags"><span>WebGL</span><span>bloom</span><span>live terminal</span><span>Tailscale mesh</span></div>
           <div class="go">▶ boot it →</div>
@@ -157,6 +167,7 @@
         <div class="body">
           <div class="kind">2D · live canvas</div>
           <h2>scalp-analyzer</h2>
+          <p class="do">→ tap a ticker to see its safety score &amp; entry/target/stop card</p>
           <p>A live US-stock scalping desk: candles, EMA &amp; VWAP, a confluence checklist and a 0–10 safety score. Type <code>check NVDA</code> for the entry/target/stop card.</p>
           <div class="tags"><span>EMA·VWAP·RSI</span><span>7 setups</span><span>Claude Code skill</span></div>
           <div class="go">▶ open the desk →</div>
@@ -168,6 +179,7 @@
         <div class="body">
           <div class="kind">interactive demo · canvas</div>
           <h2>Retry Storm</h2>
+          <p class="do">→ mash retry, flip idempotency on, watch duplicates vanish</p>
           <p>Mash <code>RETRY</code> against a transaction pipeline — duplicates pile up in red. Flip idempotency on and every retry returns the same record. A demo of the real design: workflow-ID as creation key.</p>
           <div class="tags"><span>idempotency</span><span>chaos mode</span><span>ledger integrity</span></div>
           <div class="go">▶ break it (try to) →</div>
@@ -179,6 +191,7 @@
         <div class="body">
           <div class="kind">interactive demo · canvas</div>
           <h2>Dispatch Floor</h2>
+          <p class="do">→ add players, click an agent to change status, watch the pick</p>
           <p>A weighted-scoring queue router, live: agents with status and load, players arriving (VIPs jump the line), one sorted-set score picking the winner — status ▸ load ▸ waited-longest.</p>
           <div class="tags"><span>zset scoring</span><span>live sim</span><span>chat routing</span></div>
           <div class="go">▶ run the floor →</div>
@@ -190,6 +203,7 @@
         <div class="body">
           <div class="kind">live data · zero backend</div>
           <h2>Live from GitHub</h2>
+          <p class="do">→ nothing to click — live repo data, fetched in your browser</p>
           <p>Your browser calls <code>api.github.com</code> directly — live repo cards, a language mix bar, latest pushes. No server, no cache, graceful fallback if rate-limited.</p>
           <div class="tags"><span>fetch API</span><span>live repos</span><span>no backend</span></div>
           <div class="go">▶ see it live →</div>

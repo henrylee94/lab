@@ -36,6 +36,17 @@
   .sub code { font-family:ui-monospace,monospace; font-size:.85em; color:var(--fg);
     background:#10161f; border-radius:4px; padding:1px 6px; }
 
+  .howto { display:flex; align-items:center; gap:12px; margin-top:22px; padding:10px 14px;
+    background:#0a0e15; border:1px solid rgba(77,227,255,.28); border-radius:10px;
+    font-family:ui-monospace,monospace; font-size:12.5px; color:var(--fg); line-height:1.5; }
+  .howto.gone { display:none; }
+  .howto .lbl { color:var(--cyan); font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; font-size:11px; white-space:nowrap; }
+  .howto b { color:var(--amber); font-weight:400; }
+  .howto .x { margin-left:auto; flex-shrink:0; background:none; border:0; color:var(--dim);
+    font-size:16px; line-height:1; cursor:pointer; padding:2px 4px; }
+  .howto .x:hover { color:var(--cyan); }
+
   .stats { display:flex; gap:26px; flex-wrap:wrap; margin-top:26px; font-family:ui-monospace,monospace; }
   .stats div { font-size:12px; color:var(--dim); }
   .stats b { display:block; font-size:1.7rem; color:var(--fg); font-weight:500; }
@@ -92,6 +103,13 @@
       <code>api.github.com/users/henrylee94</code> right now. What you see below is whatever
       GitHub says this second.</p>
 
+    <div class="howto" id="howto">
+      <span class="lbl">How to read this</span>
+      <span>Nothing to click — it's <b>live-fetched from GitHub</b> with no backend. Scroll for the
+        repo cards and language mix; each card opens the repo on GitHub.</span>
+      <button class="x" id="howtoX" aria-label="dismiss">×</button>
+    </div>
+
     <div class="stats" id="stats" hidden>
       <div><b class="hi" id="stRepos">–</b>public repos</div>
       <div><b id="stFollowers">–</b>followers</div>
@@ -120,6 +138,10 @@
 
 <script>
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// how-to-play strip
+document.getElementById('howtoX').addEventListener('click', ()=>
+  document.getElementById('howto').classList.add('gone'));
 
 // ambient background — same drifting particles as the lab grid
 (function(){
